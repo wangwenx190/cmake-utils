@@ -23,7 +23,7 @@
 ]]
 
 function(setup_project)
-    cmake_parse_arguments(PROJ_ARGS "QT_PROJECT" "QML_IMPORT_DIR" "LANGUAGES" ${ARGN})
+    cmake_parse_arguments(PROJ_ARGS "QT_PROJECT;ENABLE_LTO" "QML_IMPORT_DIR" "LANGUAGES" ${ARGN})
     if(NOT PROJ_ARGS_LANGUAGES)
         message(AUTHOR_WARNING "setup_project: You need to specify at least one language for this function!")
         return()
@@ -34,7 +34,7 @@ function(setup_project)
     if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE)
         # MinGW has many bugs when LTO is enabled, and they are all very
         # hard to workaround, so just don't enable LTO at all for MinGW.
-        if(NOT MINGW AND BUILD_SHARED_LIBS)
+        if(NOT MINGW AND PROJ_ARGS_ENABLE_LTO)
             set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON PARENT_SCOPE)
         endif()
     endif()
@@ -553,6 +553,7 @@ function(deploy_qt_runtime)
     elseif(UNIX)
         # TODO
     endif()
+    file(WRITE "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/qt.conf" "[Paths]\nPrefix = ..\n")
     if(NOT DEPLOY_ARGS_NO_INSTALL)
         include(GNUInstallDirs)
         install(TARGETS ${DEPLOY_ARGS_TARGET}
