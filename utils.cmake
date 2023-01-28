@@ -566,7 +566,7 @@ function(deploy_qt_runtime)
             if(${__is_quick_app})
                 qt_generate_deploy_qml_app_script(
                     TARGET ${DEPLOY_ARGS_TARGET}
-                    FILENAME_VARIABLE __deploy_script
+                    OUTPUT_SCRIPT __deploy_script
                     #MACOS_BUNDLE_POST_BUILD
                     NO_UNSUPPORTED_PLATFORM_ERROR
                     DEPLOY_USER_QML_MODULES_ON_UNSUPPORTED_PLATFORM
@@ -574,7 +574,7 @@ function(deploy_qt_runtime)
             else()
                 qt_generate_deploy_app_script(
                     TARGET ${DEPLOY_ARGS_TARGET}
-                    FILENAME_VARIABLE __deploy_script
+                    OUTPUT_SCRIPT __deploy_script
                     NO_UNSUPPORTED_PLATFORM_ERROR
                 )
             endif()
