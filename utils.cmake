@@ -67,6 +67,16 @@ function(setup_project)
             set(CMAKE_C_STANDARD_REQUIRED ON PARENT_SCOPE)
             set(CMAKE_C_EXTENSIONS OFF PARENT_SCOPE)
             set(CMAKE_C_VISIBILITY_PRESET hidden PARENT_SCOPE)
+            if(MSVC)
+                string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all] " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+                string(APPEND CMAKE_C_FLAGS " /W4 ")
+                set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} PARENT_SCOPE)
+                if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
+                    string(REGEX REPLACE "[-|/]Ob[0|1|2|3] " " " CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
+                    string(APPEND CMAKE_C_FLAGS_RELEASE " /Ob3 ")
+                    set(CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE} PARENT_SCOPE)
+                endif()
+            endif()
         elseif(__lang STREQUAL "CXX")
             enable_language(CXX)
             if(NOT DEFINED CMAKE_CXX_STANDARD)
@@ -577,8 +587,18 @@ function(deploy_qt_runtime)
     elseif(UNIX)
         # TODO
     endif()
-    get_target_property(__dir ${DEPLOY_ARGS_TARGET} RUNTIME_OUTPUT_DIRECTORY)
-    file(WRITE "${__dir}/qt.conf" "[Paths]\nPrefix = ..\n")
+    add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
+        "${CMAKE_COMMAND}"
+        -E copy
+        "${CMAKE_CURRENT_SOURCE_DIR}/qt.conf"
+        "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>"
+    )
+    add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
+        "${CMAKE_COMMAND}"
+        -E rm -rf
+        "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/translations"
+        "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../qml/translations"
+    )
     if(NOT DEPLOY_ARGS_NO_INSTALL)
         include(GNUInstallDirs)
         install(TARGETS ${DEPLOY_ARGS_TARGET}
