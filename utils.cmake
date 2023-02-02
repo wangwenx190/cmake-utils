@@ -327,9 +327,10 @@ function(setup_compile_params)
                 endif()
             endif()
         else()
+            # MinGW can also use these flags.
             target_compile_options(${__target} PRIVATE
                 -Wall -Wextra -Werror
-                $<$<NOT:$<CONFIG:Debug>>:-ffunction-sections -fdata-sections> # -fcf-protection=full? -Wa,-mno-branches-within-32B-boundaries?
+                $<$<NOT:$<CONFIG:Debug>>:-ffunction-sections -fdata-sections>
             )
             if(APPLE)
                 target_link_options(${__target} PRIVATE
@@ -340,7 +341,25 @@ function(setup_compile_params)
                     $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections>
                 )
             endif()
-            # TODO: spectre, control flow guard
+            if(MINGW) # llvm-mingw
+                target_compile_options(${__target} PRIVATE
+                    $<$<NOT:$<CONFIG:Debug>>:-mguard=cf>
+                )
+                target_link_options(${__target} PRIVATE
+                    $<$<NOT:$<CONFIG:Debug>>:-Wl,--guard-cf>
+                )
+            elseif(CLANG)
+                # -Wa,--x86-branches-within-32B-boundaries
+                target_compile_options(${__target} PRIVATE
+                    $<$<NOT:$<CONFIG:Debug>>:-mbranches-within-32B-boundaries>
+                )
+            else() # GCC
+                # Can we remove "-Wa" now?
+                target_compile_options(${__target} PRIVATE
+                    $<$<NOT:$<CONFIG:Debug>>:-Wa,-mbranches-within-32B-boundaries -fcf-protection=full>
+                )
+            endif()
+            # TODO: spectre & control flow guard & intel cet for Clang & GCC.
         endif()
     endforeach()
 endfunction()
@@ -597,6 +616,7 @@ function(deploy_qt_runtime)
         "${CMAKE_COMMAND}"
         -E rm -rf
         "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/translations"
+        "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/qml/translations"
         "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../qml/translations"
     )
     if(NOT DEPLOY_ARGS_NO_INSTALL)
