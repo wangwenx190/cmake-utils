@@ -606,12 +606,12 @@ function(deploy_qt_runtime)
     elseif(UNIX)
         # TODO
     endif()
-    add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
+    #[[add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
         "${CMAKE_COMMAND}"
         -E copy
         "${CMAKE_CURRENT_LIST_DIR}/qt.conf"
         "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>"
-    )
+    )]]
     add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
         "${CMAKE_COMMAND}"
         -E rm -rf
