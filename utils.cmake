@@ -348,18 +348,23 @@ function(setup_compile_params)
                 target_link_options(${__target} PRIVATE
                     $<$<NOT:$<CONFIG:Debug>>:-Wl,--guard-cf>
                 )
-            elseif(CLANG)
-                # -Wa,--x86-branches-within-32B-boundaries
+            else()
                 target_compile_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:-mbranches-within-32B-boundaries>
+                    $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
                 )
-            else() # GCC
-                # Can we remove "-Wa" now?
-                target_compile_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:-Wa,-mbranches-within-32B-boundaries -fcf-protection=full>
-                )
+                if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                    # -Wa,--x86-branches-within-32B-boundaries
+                    target_compile_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:-mbranches-within-32B-boundaries>
+                    )
+                elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+                    # Can we remove "-Wa"?
+                    target_compile_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:-Wa,-mbranches-within-32B-boundaries>
+                    )
+                endif()
             endif()
-            # TODO: spectre & control flow guard & intel cet for Clang & GCC.
+            # TODO: spectre & intel cet for Clang & GCC.
         endif()
     endforeach()
 endfunction()
