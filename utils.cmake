@@ -609,9 +609,16 @@ function(deploy_qt_runtime)
     #[[add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
         "${CMAKE_COMMAND}"
         -E copy
-        "${CMAKE_CURRENT_LIST_DIR}/qt.conf"
+        "${CMAKE_CURRENT_LIST_DIR}/qt.conf" # FIXME
         "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>"
     )]]
+    if(MSVC)
+        add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
+            "${CMAKE_COMMAND}"
+            -E rm -f
+            "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/$<TARGET_FILE_BASE_NAME:${DEPLOY_ARGS_TARGET}>.manifest"
+        )
+    endif()
     add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
         "${CMAKE_COMMAND}"
         -E rm -rf
