@@ -31,6 +31,54 @@ function(setup_project)
     if(PROJ_ARGS_UNPARSED_ARGUMENTS)
         message(AUTHOR_WARNING "setup_project: Unrecognized arguments: ${PROJ_ARGS_UNPARSED_ARGUMENTS}")
     endif()
+    # MSVC: Do not add "-Z7", "-Zi" or "-ZI" to CMAKE_<LANG>_FLAGS by default. Let developers decide.
+    if(POLICY CMP0141)
+        cmake_policy(SET CMP0141 NEW)
+    endif()
+    # Introduced by CMP0141. Will be ignored if compiler is not MSVC, so it's fine to set it globally.
+    if(NOT DEFINED CMAKE_MSVC_DEBUG_INFORMATION_FORMAT)
+        set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>" PARENT_SCOPE)
+    endif()
+    # Improve language standard and extension selection.
+    if(POLICY CMP0128)
+        cmake_policy(SET CMP0128 NEW)
+    endif()
+    # LANGUAGE source file property explicitly compiles as language.
+    if(POLICY CMP0119)
+        cmake_policy(SET CMP0119 NEW)
+    endif()
+    # Do not add "-GR" to CMAKE_CXX_FLAGS by default.
+    if(POLICY CMP0117)
+        cmake_policy(SET CMP0117 NEW)
+    endif()
+    # Source file extensions must be explicit.
+    if(POLICY CMP0115)
+        cmake_policy(SET CMP0115 NEW)
+    endif()
+    # Let AUTOMOC and AUTOUIC process header files that end with a .hh extension.
+    if(POLICY CMP0100)
+        cmake_policy(SET CMP0100 NEW)
+    endif()
+    # The project() command preserves leading zeros in version components.
+    if(POLICY CMP0096)
+        cmake_policy(SET CMP0096 NEW)
+    endif()
+    # MSVC warning flags are not in CMAKE_<LANG>_FLAGS by default.
+    if(POLICY CMP0092)
+        cmake_policy(SET CMP0092 NEW)
+    endif()
+    # MSVC: Do not add "-MT(d)" or "-MD(d)" to CMAKE_<LANG>_FLAGS by default. Let developers decide.
+    if(POLICY CMP0091)
+        cmake_policy(SET CMP0091 NEW)
+    endif()
+    # Introduced by CMP0091. Will be ignored if compiler is not MSVC.
+    if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" PARENT_SCOPE)
+    endif()
+    # Add correct link flags for PIE (Position Independent Executable).
+    if(POLICY CMP0083)
+        cmake_policy(SET CMP0083 NEW)
+    endif()
     if(NOT DEFINED CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE Release PARENT_SCOPE)
     endif()
@@ -68,8 +116,9 @@ function(setup_project)
             set(CMAKE_C_EXTENSIONS OFF PARENT_SCOPE)
             set(CMAKE_C_VISIBILITY_PRESET hidden PARENT_SCOPE)
             if(MSVC)
+                string(REGEX REPLACE "[-|/]w " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
                 string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all] " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
-                string(APPEND CMAKE_C_FLAGS " /W4 ")
+                string(APPEND CMAKE_C_FLAGS " /Wall ")
                 set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} PARENT_SCOPE)
                 if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
                     string(REGEX REPLACE "[-|/]Ob[0|1|2|3] " " " CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
@@ -87,9 +136,10 @@ function(setup_project)
             set(CMAKE_CXX_VISIBILITY_PRESET hidden PARENT_SCOPE)
             if(MSVC)
                 string(REGEX REPLACE "[-|/]GR-? " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-                string(REGEX REPLACE "[-|/]EHs-?c-? " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+                string(REGEX REPLACE "[-|/]EH(a-?|r-?|s-?|c-?)+ " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+                string(REGEX REPLACE "[-|/]w " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
                 string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all] " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-                string(APPEND CMAKE_CXX_FLAGS " /GR /EHsc /W4 ")
+                string(APPEND CMAKE_CXX_FLAGS " /EHsc /Wall ")
                 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} PARENT_SCOPE)
                 if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
                     string(REGEX REPLACE "[-|/]Ob[0|1|2|3] " " " CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
@@ -245,7 +295,7 @@ function(setup_compile_params)
                 target_link_options(${__target} PRIVATE /HIGHENTROPYVA)
             endif()
             if(MSVC_VERSION GREATER_EQUAL 1915) # Visual Studio 2017 version 15.8
-                target_compile_options(${__target} PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/JMC>)
+                target_compile_options(${__target} PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:/JMC>)
             endif()
             if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
                 target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/CETCOMPAT>)
@@ -572,7 +622,7 @@ function(deploy_qt_runtime)
         add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
             "${__deploy_tool}"
             $<$<CONFIG:Debug>:--debug>
-            $<$<OR:$<CONFIG:MinSizeRel>,$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>:--release>
+            $<$<CONFIG:MinSizeRel,Release,RelWithDebInfo>:--release>
             --libdir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>"
             --plugindir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../plugins"
             #--no-translations
