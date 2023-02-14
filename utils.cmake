@@ -118,7 +118,7 @@ function(setup_project)
             if(MSVC)
                 string(REGEX REPLACE "[-|/]w " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
                 string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all] " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
-                string(APPEND CMAKE_C_FLAGS " /Wall ")
+                string(APPEND CMAKE_C_FLAGS " /W4 ") # /Wall gives me over 10000 warnings!
                 set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} PARENT_SCOPE)
                 if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
                     string(REGEX REPLACE "[-|/]Ob[0|1|2|3] " " " CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
@@ -139,7 +139,7 @@ function(setup_project)
                 string(REGEX REPLACE "[-|/]EH(a-?|r-?|s-?|c-?)+ " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
                 string(REGEX REPLACE "[-|/]w " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
                 string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all] " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-                string(APPEND CMAKE_CXX_FLAGS " /EHsc /Wall ")
+                string(APPEND CMAKE_CXX_FLAGS " /EHsc /W4 ") # /Wall gives me over 10000 warnings!
                 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} PARENT_SCOPE)
                 if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
                     string(REGEX REPLACE "[-|/]Ob[0|1|2|3] " " " CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
