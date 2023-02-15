@@ -23,9 +23,13 @@
 ]]
 
 function(setup_project)
-    cmake_parse_arguments(PROJ_ARGS "QT_PROJECT;ENABLE_LTO" "QML_IMPORT_DIR" "LANGUAGES" ${ARGN})
+    cmake_parse_arguments(PROJ_ARGS "QT_PROJECT;ENABLE_LTO;WARNINGS_ARE_ERRORS;MAX_WARNING;NO_WARNING;RTTI;EXCEPTIONS" "QML_IMPORT_DIR" "LANGUAGES" ${ARGN})
     if(NOT PROJ_ARGS_LANGUAGES)
         message(AUTHOR_WARNING "setup_project: You need to specify at least one language for this function!")
+        return()
+    endif()
+    if(PROJ_ARGS_MAX_WARNING AND PROJ_ARGS_NO_WARNING)
+        message(AUTHOR_WARNING "setup_project: MAX_WARNING and NO_WARNING can't be enabled at the same time!")
         return()
     endif()
     if(PROJ_ARGS_UNPARSED_ARGUMENTS)
@@ -80,20 +84,20 @@ function(setup_project)
         cmake_policy(SET CMP0083 NEW)
     endif()
     if(NOT DEFINED CMAKE_BUILD_TYPE)
-        set(CMAKE_BUILD_TYPE Release PARENT_SCOPE)
+        set(CMAKE_BUILD_TYPE "Release" PARENT_SCOPE)
     endif()
-    if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE)
+    if(PROJ_ARGS_ENABLE_LTO)
         # MinGW has many bugs when LTO is enabled, and they are all very
         # hard to workaround, so just don't enable LTO at all for MinGW.
-        if(NOT MINGW AND PROJ_ARGS_ENABLE_LTO)
+        if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE AND NOT MINGW)
             set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON PARENT_SCOPE)
         endif()
     endif()
     if(NOT DEFINED CMAKE_DEBUG_POSTFIX)
         if(WIN32)
-            set(CMAKE_DEBUG_POSTFIX d PARENT_SCOPE)
+            set(CMAKE_DEBUG_POSTFIX "d" PARENT_SCOPE)
         else()
-            set(CMAKE_DEBUG_POSTFIX _debug PARENT_SCOPE)
+            set(CMAKE_DEBUG_POSTFIX "_debug" PARENT_SCOPE)
         endif()
     endif()
     if(NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
@@ -114,17 +118,40 @@ function(setup_project)
             endif()
             set(CMAKE_C_STANDARD_REQUIRED ON PARENT_SCOPE)
             set(CMAKE_C_EXTENSIONS OFF PARENT_SCOPE)
-            set(CMAKE_C_VISIBILITY_PRESET hidden PARENT_SCOPE)
+            set(CMAKE_C_VISIBILITY_PRESET "hidden" PARENT_SCOPE)
             if(MSVC)
                 string(REGEX REPLACE "[-|/]w " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
-                string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all] " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
-                string(APPEND CMAKE_C_FLAGS " /W4 ") # /Wall gives me over 10000 warnings!
+                string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all|X] " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+                if(PROJ_ARGS_NO_WARNING)
+                    string(APPEND CMAKE_C_FLAGS " /w ")
+                elseif(PROJ_ARGS_MAX_WARNING)
+                    string(APPEND CMAKE_C_FLAGS " /W4 ") # /Wall gives me 10000+ warnings!
+                else()
+                    string(APPEND CMAKE_C_FLAGS " /W3 ")
+                endif()
+                if(PROJ_ARGS_WARNINGS_ARE_ERRORS)
+                    string(APPEND CMAKE_C_FLAGS " /WX ")
+                endif()
                 set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} PARENT_SCOPE)
                 if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
                     string(REGEX REPLACE "[-|/]Ob[0|1|2|3] " " " CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
                     string(APPEND CMAKE_C_FLAGS_RELEASE " /Ob3 ")
                     set(CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE} PARENT_SCOPE)
                 endif()
+            else()
+                string(REGEX REPLACE "-w " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+                string(REGEX REPLACE "-W[all|extra|error|pedantic] " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+                if(PROJ_ARGS_NO_WARNING)
+                    string(APPEND CMAKE_C_FLAGS " -w ")
+                elseif(PROJ_ARGS_MAX_WARNING)
+                    string(APPEND CMAKE_C_FLAGS " -Wall -Wextra ") # -Wpedantic ?
+                else()
+                    string(APPEND CMAKE_C_FLAGS " -Wall ")
+                endif()
+                if(PROJ_ARGS_WARNINGS_ARE_ERRORS)
+                    string(APPEND CMAKE_C_FLAGS " -Werror ")
+                endif()
+                set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} PARENT_SCOPE)
             endif()
         elseif(__lang STREQUAL "CXX")
             enable_language(CXX)
@@ -133,19 +160,62 @@ function(setup_project)
             endif()
             set(CMAKE_CXX_STANDARD_REQUIRED ON PARENT_SCOPE)
             set(CMAKE_CXX_EXTENSIONS OFF PARENT_SCOPE)
-            set(CMAKE_CXX_VISIBILITY_PRESET hidden PARENT_SCOPE)
+            set(CMAKE_CXX_VISIBILITY_PRESET "hidden" PARENT_SCOPE)
             if(MSVC)
                 string(REGEX REPLACE "[-|/]GR-? " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
                 string(REGEX REPLACE "[-|/]EH(a-?|r-?|s-?|c-?)+ " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
                 string(REGEX REPLACE "[-|/]w " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-                string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all] " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-                string(APPEND CMAKE_CXX_FLAGS " /EHsc /W4 ") # /Wall gives me over 10000 warnings!
+                string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all|X] " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+                if(PROJ_ARGS_NO_WARNING)
+                    string(APPEND CMAKE_CXX_FLAGS " /w ")
+                elseif(PROJ_ARGS_MAX_WARNING)
+                    string(APPEND CMAKE_CXX_FLAGS " /W4 ") # /Wall gives me 10000+ warnings!
+                else()
+                    string(APPEND CMAKE_CXX_FLAGS " /W3 ")
+                endif()
+                if(PROJ_ARGS_WARNINGS_ARE_ERRORS)
+                    string(APPEND CMAKE_CXX_FLAGS " /WX ")
+                endif()
+                if(PROJ_ARGS_RTTI)
+                    string(APPEND CMAKE_CXX_FLAGS " /GR ")
+                else()
+                    string(APPEND CMAKE_CXX_FLAGS " /GR- ")
+                endif()
+                if(PROJ_ARGS_EXCEPTIONS)
+                    string(APPEND CMAKE_CXX_FLAGS " /EHsc ")
+                else()
+                    string(APPEND CMAKE_CXX_FLAGS " /EHs-c- ")
+                endif()
                 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} PARENT_SCOPE)
                 if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
                     string(REGEX REPLACE "[-|/]Ob[0|1|2|3] " " " CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
                     string(APPEND CMAKE_CXX_FLAGS_RELEASE " /Ob3 ")
                     set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} PARENT_SCOPE)
                 endif()
+            else()
+                string(REGEX REPLACE "-w " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+                string(REGEX REPLACE "-W[all|extra|error|pedantic] " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+                if(PROJ_ARGS_NO_WARNING)
+                    string(APPEND CMAKE_CXX_FLAGS " -w ")
+                elseif(PROJ_ARGS_MAX_WARNING)
+                    string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra ") # -Wpedantic ?
+                else()
+                    string(APPEND CMAKE_CXX_FLAGS " -Wall ")
+                endif()
+                if(PROJ_ARGS_WARNINGS_ARE_ERRORS)
+                    string(APPEND CMAKE_CXX_FLAGS " -Werror ")
+                endif()
+                if(PROJ_ARGS_RTTI)
+                    string(APPEND CMAKE_CXX_FLAGS " -frtti ")
+                else()
+                    string(APPEND CMAKE_CXX_FLAGS " -fno-rtti ")
+                endif()
+                if(PROJ_ARGS_EXCEPTIONS)
+                    string(APPEND CMAKE_CXX_FLAGS " -fexceptions ")
+                else()
+                    string(APPEND CMAKE_CXX_FLAGS " -fno-exceptions ")
+                endif()
+                set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} PARENT_SCOPE)
             endif()
         elseif(__lang STREQUAL "RC")
             if(WIN32)
@@ -232,9 +302,11 @@ function(setup_qt_stuff)
         )
         # On Windows enabling this flag requires us re-compile Qt with this flag enabled,
         # so only enable it on non-Windows platforms.
-        target_compile_definitions(${__target} PRIVATE
-            QT_STRICT_ITERATORS
-        )
+        if(NOT WIN32)
+            target_compile_definitions(${__target} PRIVATE
+                QT_STRICT_ITERATORS
+            )
+        endif()
         # We handle this flag specially because some Qt headers may still use the
         # traditional keywords (especially some private headers).
         if(NOT QT_ARGS_ALLOW_KEYWORD)
@@ -246,7 +318,7 @@ function(setup_qt_stuff)
 endfunction()
 
 function(setup_compile_params)
-    cmake_parse_arguments(COM_ARGS "SPECTRE;EHCONT;PERMISSIVE" "" "TARGETS" ${ARGN})
+    cmake_parse_arguments(COM_ARGS "SPECTRE;EHCONTGUARD;PERMISSIVE;INTELCET;INTELJCC;CFGUARD" "" "TARGETS" ${ARGN})
     if(NOT COM_ARGS_TARGETS)
         message(AUTHOR_WARNING "setup_compile_params: You need to specify at least one target for this function!")
         return()
@@ -270,16 +342,19 @@ function(setup_compile_params)
             target_compile_definitions(${__target} PRIVATE
                 _CRT_NON_CONFORMING_SWPRINTFS _CRT_SECURE_NO_WARNINGS
                 _CRT_SECURE_NO_DEPRECATE _CRT_NONSTDC_NO_WARNINGS
-                _CRT_NONSTDC_NO_DEPRECATE _SCL_SECURE_NO_WARNINGS
-                _SCL_SECURE_NO_DEPRECATE _ENABLE_EXTENDED_ALIGNED_STORAGE
-                _USE_MATH_DEFINES NOMINMAX UNICODE _UNICODE
-                WIN32_LEAN_AND_MEAN WINRT_LEAN_AND_MEAN
+                _CRT_NONSTDC_NO_DEPRECATE
+                _SCL_SECURE_NO_WARNINGS _SCL_SECURE_NO_DEPRECATE
+                _ENABLE_EXTENDED_ALIGNED_STORAGE # STL fixed a bug which breaks binary compatibility, thus need to be enabled manually by defining this.
+                _USE_MATH_DEFINES # Enable the PI constant define for the math headers.
+                NOMINMAX # Avoid the Win32 macros conflict with std::min() and std::max().
+                UNICODE _UNICODE # Use the -W APIs by default.
+                WIN32_LEAN_AND_MEAN WINRT_LEAN_AND_MEAN # Filter out some rarely used headers, to increase compilation speed.
             )
             target_compile_options(${__target} PRIVATE
-                /bigobj /utf-8 $<$<NOT:$<CONFIG:Debug>>:/fp:fast /GT /Gw /Gy /guard:cf /Zc:inline>
+                /bigobj /utf-8 $<$<NOT:$<CONFIG:Debug>>:/fp:fast /GT /Gw /Gy /Zc:inline>
             )
             target_link_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:/OPT:REF /OPT:ICF /OPT:LBR /GUARD:CF>
+                $<$<NOT:$<CONFIG:Debug>>:/OPT:REF /OPT:ICF /OPT:LBR>
                 /DYNAMICBASE /NXCOMPAT /LARGEADDRESSAWARE /WX
             )
             set(__target_type "UNKNOWN")
@@ -298,13 +373,9 @@ function(setup_compile_params)
                 target_compile_options(${__target} PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:/JMC>)
             endif()
             if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
-                target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/CETCOMPAT>)
                 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
                     target_compile_options(${__target} PRIVATE /d2FH4)
                 endif()
-            endif()
-            if(MSVC_VERSION GREATER_EQUAL 1925) # Visual Studio 2019 version 16.5
-                target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/QIntel-jcc-erratum>)
             endif()
             if(MSVC_VERSION GREATER_EQUAL 1929) # Visual Studio 2019 version 16.10
                 target_compile_options(${__target} PRIVATE /await:strict)
@@ -314,6 +385,20 @@ function(setup_compile_params)
             if(MSVC_VERSION GREATER_EQUAL 1930) # Visual Studio 2022 version 17.0
                 target_compile_options(${__target} PRIVATE /options:strict)
             endif()
+            if(COM_ARGS_CFGUARD)
+                target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:cf>)
+                target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/GUARD:CF>)
+            endif()
+            if(COM_ARGS_INTELCET)
+                if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
+                    target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/CETCOMPAT>)
+                endif()
+            endif()
+            if(COM_ARGS_INTELJCC)
+                if(MSVC_VERSION GREATER_EQUAL 1925) # Visual Studio 2019 version 16.5
+                    target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/QIntel-jcc-erratum>)
+                endif()
+            endif()
             if(COM_ARGS_SPECTRE)
                 if(MSVC_VERSION GREATER_EQUAL 1925) # Visual Studio 2019 version 16.5
                     target_compile_options(${__target} PRIVATE /Qspectre-load)
@@ -321,7 +406,7 @@ function(setup_compile_params)
                     target_compile_options(${__target} PRIVATE /Qspectre)
                 endif()
             endif()
-            if(COM_ARGS_EHCONT)
+            if(COM_ARGS_EHCONTGUARD)
                 if((MSVC_VERSION GREATER_EQUAL 1927) AND (CMAKE_SIZEOF_VOID_P EQUAL 8)) # Visual Studio 2019 version 16.7
                     target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:ehcont>)
                     target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:ehcont>)
@@ -379,7 +464,6 @@ function(setup_compile_params)
         else()
             # MinGW can also use these flags.
             target_compile_options(${__target} PRIVATE
-                -Wall -Wextra -Werror
                 $<$<NOT:$<CONFIG:Debug>>:-ffunction-sections -fdata-sections>
             )
             if(APPLE)
@@ -391,30 +475,61 @@ function(setup_compile_params)
                     $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections>
                 )
             endif()
-            if(MINGW) # llvm-mingw
-                target_compile_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:-mguard=cf>
-                )
-                target_link_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:-Wl,--guard-cf>
-                )
-            else()
-                target_compile_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
-                )
-                if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            if(COM_ARGS_INTELCET)
+                if(MINGW)
+                    # Currently not supported.
+                else()
+                    target_compile_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
+                    )
+                endif()
+            endif()
+            if(COM_ARGS_INTELJCC)
+                if(MINGW)
+                    # Currently not supported.
+                elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
                     # -Wa,--x86-branches-within-32B-boundaries
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:-mbranches-within-32B-boundaries>
                     )
                 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-                    # Can we remove "-Wa"?
+                    # TODO: Can we remove "-Wa"? If so, merge this branch with Clang.
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:-Wa,-mbranches-within-32B-boundaries>
                     )
                 endif()
             endif()
-            # TODO: spectre & intel cet for Clang & GCC.
+            if(COM_ARGS_CFGUARD)
+                if(MINGW)
+                    target_compile_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:-mguard=cf>
+                    )
+                    target_link_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:-Wl,--guard-cf>
+                    )
+                elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                    target_compile_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:-fsanitize=cfi>
+                    )
+                elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+                    target_compile_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
+                    )
+                endif()
+            endif()
+            if(COM_ARGS_SPECTRE)
+                if(MINGW)
+                    # Currently not supported.
+                else()
+                    target_compile_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:
+                            -mretpoline
+                            -mindirect-branch=thunk -mindirect-branch-register
+                            -mfunction-return=thunk -mfunction-return-register
+                        >
+                    )
+                endif()
+            endif()
         endif()
     endforeach()
 endfunction()
