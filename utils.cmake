@@ -546,10 +546,11 @@ function(setup_compile_params)
                 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:
-                            -mindirect-branch=thunk
-                            -mfunction-return=thunk
-                            -mindirect-branch-register
-                            -mindirect-branch-cs-prefix
+                            #-mindirect-branch=thunk
+                            #-mfunction-return=thunk
+                            #-mindirect-branch-register
+                            #-mindirect-branch-cs-prefix
+                            -fcf-protection=full
                         >
                     )
                 endif()
