@@ -519,7 +519,7 @@ function(setup_compile_params)
                         $<$<NOT:$<CONFIG:Debug>>:-Wl,--guard-cf>
                     )
                 else()
-                    # FIXME: Clang: -fsanitize=cfi -fsanitize-cfi-cross-dso
+                    # AppleClang says x86 doesn't support -fsanitize=cfi -fsanitize-cfi-cross-dso, why?
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
                     )
@@ -535,21 +535,23 @@ function(setup_compile_params)
                             -mspeculative-load-hardening
                         >
                     )
-                    target_link_options(${__target} PRIVATE
+                    # AppleClang can't recognize these parameters, why?
+                    #[[target_link_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:
                             -Wl,-z,relro
                             -Wl,-z,now
                             -Wl,-z,noexecstack
                             -Wl,-z,separate-code
                         >
-                    )
+                    )]]
                 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:
-                            #-mindirect-branch=thunk
-                            #-mfunction-return=thunk
-                            #-mindirect-branch-register
-                            #-mindirect-branch-cs-prefix
+                            # These parameters are not compatible with -fcf-protection=full
+                            #[[-mindirect-branch=thunk
+                            -mfunction-return=thunk
+                            -mindirect-branch-register
+                            -mindirect-branch-cs-prefix]]
                             -fcf-protection=full
                         >
                     )
