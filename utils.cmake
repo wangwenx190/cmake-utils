@@ -533,8 +533,6 @@ function(setup_compile_params)
                         $<$<NOT:$<CONFIG:Debug>>:
                             -mretpoline
                             -mspeculative-load-hardening
-                            -mllvm -x86-use-ibt
-                            -mllvm -x86-use-shstk
                         >
                     )
                     target_link_options(${__target} PRIVATE
