@@ -474,7 +474,7 @@ function(setup_compile_params)
                 endif()
             endif()
         else()
-            # MinGW can also use these flags.
+            # MinGW also support these flags.
             target_compile_options(${__target} PRIVATE
                 $<$<NOT:$<CONFIG:Debug>>:-ffunction-sections -fdata-sections>
             )
@@ -499,15 +499,9 @@ function(setup_compile_params)
             if(COM_ARGS_INTELJCC)
                 if(MINGW)
                     # Currently not supported.
-                elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-                    # -Wa,--x86-branches-within-32B-boundaries
+                else()
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:-mbranches-within-32B-boundaries>
-                    )
-                elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-                    # TODO: Can we remove "-Wa"? If so, merge this branch with Clang.
-                    target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-Wa,-mbranches-within-32B-boundaries>
                     )
                 endif()
             endif()
@@ -519,11 +513,8 @@ function(setup_compile_params)
                     target_link_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:-Wl,--guard-cf>
                     )
-                elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-                    target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-fsanitize=cfi>
-                    )
-                elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+                else()
+                    # FIXME: Clang: -fsanitize=cfi -fsanitize-cfi-cross-dso
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
                     )
@@ -532,12 +523,30 @@ function(setup_compile_params)
             if(COM_ARGS_SPECTRE)
                 if(MINGW)
                     # Currently not supported.
-                else()
+                elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:
                             -mretpoline
-                            -mindirect-branch=thunk -mindirect-branch-register
-                            -mfunction-return=thunk -mfunction-return-register
+                            -mspeculative-load-hardening
+                            -mllvm -x86-use-ibt
+                            -mllvm -x86-use-shstk
+                        >
+                    )
+                    target_link_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:
+                            -Wl,-z,relro
+                            -Wl,-z,now
+                            -Wl,-z,noexecstack
+                            -Wl,-z,separate-code
+                        >
+                    )
+                elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+                    target_compile_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:
+                            -mindirect-branch=thunk
+                            -mfunction-return=thunk
+                            -mindirect-branch-register
+                            -mindirect-branch-cs-prefix
                         >
                     )
                 endif()
