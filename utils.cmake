@@ -500,9 +500,14 @@ function(setup_compile_params)
                 if(MINGW)
                     # Currently not supported.
                 else()
+                    set(__prefix)
+                    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+                        set(__prefix "-Wa,")
+                    endif()
                     target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-mbranches-within-32B-boundaries>
+                        $<$<NOT:$<CONFIG:Debug>>:${__prefix}-mbranches-within-32B-boundaries>
                     )
+                    unset(__prefix)
                 endif()
             endif()
             if(COM_ARGS_CFGUARD)
