@@ -648,11 +648,6 @@ function(setup_package_export)
         message(AUTHOR_WARNING "setup_package_export: Unrecognized arguments: ${PKG_ARGS_UNPARSED_ARGUMENTS}")
     endif()
     include(GNUInstallDirs)
-    set(__targets ${PKG_ARGS_TARGET})
-    # Ugly hack to workaround a CMake configure error.
-    if(TARGET ${PKG_ARGS_TARGET}_resources_1)
-        list(APPEND __targets ${PKG_ARGS_TARGET}_resources_1)
-    endif()
     set(__bin_dir "${CMAKE_INSTALL_BINDIR}")
     if(PKG_ARGS_BIN_PATH)
         set(__bin_dir "${__bin_dir}/${PKG_ARGS_BIN_PATH}")
@@ -665,7 +660,7 @@ function(setup_package_export)
     if(PKG_ARGS_INCLUDE_PATH)
         set(__inc_dir "${__inc_dir}/${PKG_ARGS_INCLUDE_PATH}")
     endif()
-    install(TARGETS ${__targets}
+    install(TARGETS ${PKG_ARGS_TARGET}
         EXPORT ${PKG_ARGS_TARGET}Targets
         RUNTIME  DESTINATION "${__bin_dir}"
         LIBRARY  DESTINATION "${__lib_dir}"
