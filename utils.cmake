@@ -1127,8 +1127,7 @@ function(generate_win32_manifest_file)
       <maxversiontested Id=\"10.0.22621.0\"/>")
     set(__utf8_codepage)
     if(MF_ARGS_UTF8_CODEPAGE)
-        set(__utf8_codepage "<!-- Available since Windows 10 1903 -->
-      <activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">UTF-8</activeCodePage>")
+        set(__utf8_codepage "<activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">UTF-8</activeCodePage>")
     endif()
     set(__contents "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>
 
@@ -1161,12 +1160,9 @@ function(generate_win32_manifest_file)
   </compatibility>
   <application xmlns=\"urn:schemas-microsoft-com:asm.v3\">
     <windowsSettings>
-      <!-- Available since Windows Vista -->
       <dpiAware xmlns=\"http://schemas.microsoft.com/SMI/2005/WindowsSettings\">True/PM</dpiAware>
-      <!-- Available since Windows 10 1607 -->
       <dpiAwareness xmlns=\"http://schemas.microsoft.com/SMI/2016/WindowsSettings\">PerMonitorV2, PerMonitor</dpiAwareness>
       <printerDriverIsolation xmlns=\"http://schemas.microsoft.com/SMI/2011/WindowsSettings\">True</printerDriverIsolation>
-      <disableWindowFiltering xmlns=\"http://schemas.microsoft.com/SMI/2011/WindowsSettings\">True</disableWindowFiltering>
       <longPathAware xmlns=\"http://schemas.microsoft.com/SMI/2016/WindowsSettings\">True</longPathAware>
       <heapType xmlns=\"http://schemas.microsoft.com/SMI/2020/WindowsSettings\">SegmentHeap</heapType>
       ${__utf8_codepage}
