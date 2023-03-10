@@ -375,6 +375,7 @@ function(setup_compile_params)
                 _USE_MATH_DEFINES # Enable the PI constant define for the math headers.
                 NOMINMAX # Avoid the Win32 macros conflict with std::min() and std::max().
                 UNICODE _UNICODE # Use the -W APIs by default.
+                STRICT # https://learn.microsoft.com/en-us/windows/win32/winprog/enabling-strict
                 WIN32_LEAN_AND_MEAN WINRT_LEAN_AND_MEAN # Filter out some rarely used headers, to increase compilation speed.
             )
             target_compile_options(${__target} PRIVATE
@@ -531,7 +532,7 @@ function(setup_compile_params)
                         $<$<NOT:$<CONFIG:Debug>>:-mguard=cf>
                     )
                     target_link_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-Wl,--guard-cf>
+                        $<$<NOT:$<CONFIG:Debug>>:-Wl,-mguard=cf>
                     )
                 else()
                     # AppleClang says x86 doesn't support -fsanitize=cfi -fsanitize-cfi-cross-dso, why?
