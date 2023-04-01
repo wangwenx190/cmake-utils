@@ -399,6 +399,9 @@ function(setup_compile_params)
                 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
                     target_link_options(${__target} PRIVATE /HIGHENTROPYVA)
                 endif()
+                if(MSVC_VERSION GREATER_EQUAL 1910) # Visual Studio 2017 version 15.0
+                    target_compile_options(${__target} PRIVATE /DEPENDENTLOADFLAG:0x800)
+                endif()
                 if(MSVC_VERSION GREATER_EQUAL 1915) # Visual Studio 2017 version 15.8
                     target_compile_options(${__target} PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:/JMC>)
                 endif()
