@@ -16,12 +16,14 @@ echo.
 goto Help
 
 :Install
+set Root=%~dp0
+set Root=%Root:~0,-1%
 echo.
 echo.Start writing to the registry
 echo.[HKCU\Code\YY-Thunks]
-echo.Root="%~dp0"
+echo.Root="%Root%"
 echo.
-reg ADD HKCU\Code\YY-Thunks /v Root /t REG_SZ /d "%~dp0\" /f
+reg ADD HKCU\Code\YY-Thunks /v Root /t REG_SZ /d "%Root%" /f
 echo.
 goto ExitScript
 
