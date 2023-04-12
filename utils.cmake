@@ -261,7 +261,9 @@ function(setup_project)
                 enable_language(RC)
             endif()
             if(MSVC)
-                # Clang-CL forces us use "-" instead of "/".
+                # Clang-CL forces us use "-" instead of "/" because it always
+                # regard everything begins with "/" as a file path instead of
+                # a command line parameter.
                 set(CMAKE_RC_FLAGS "-c65001 -DWIN32 -nologo" PARENT_SCOPE)
             endif()
         endif()
@@ -379,7 +381,7 @@ function(setup_compile_params)
                 STRICT # https://learn.microsoft.com/en-us/windows/win32/winprog/enabling-strict
                 WIN32_LEAN_AND_MEAN WINRT_LEAN_AND_MEAN # Filter out some rarely used headers, to increase compilation speed.
             )
-            if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Clang-CL doesn't support all these parameters.
+            if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Clang-CL doesn't support most of these parameters.
                 target_compile_options(${__target} PRIVATE
                     /bigobj /utf-8 $<$<NOT:$<CONFIG:Debug>>:/fp:fast /GT /Gw /Gy /Zc:inline>
                 )
@@ -496,9 +498,9 @@ function(setup_compile_params)
                 endif()
             endif()
         else()
-            # MinGW also support these flags.
+            # MinGW also supports these flags.
             target_compile_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:-ffunction-sections -fdata-sections>
+                $<$<NOT:$<CONFIG:Debug>>:-ffp-contract=fast -ffast-math -ffunction-sections -fdata-sections>
             )
             if(APPLE)
                 target_link_options(${__target} PRIVATE
