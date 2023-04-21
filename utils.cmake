@@ -357,6 +357,19 @@ function(setup_compile_params)
         message(AUTHOR_WARNING "setup_compile_params: Unrecognized arguments: ${COM_ARGS_UNPARSED_ARGUMENTS}")
     endif()
     foreach(__target ${COM_ARGS_TARGETS})
+        set(__target_type "UNKNOWN")
+        get_target_property(__target_type ${__target} TYPE)
+        # Turn off LTCG/LTO for static libraries, because enabling it for the static libraries
+        # will destroy the binary compatibility of them and some compilers will also produce
+        # some way too large object files which we can't accept in most cases.
+        if(__target_type STREQUAL "STATIC_LIBRARY")
+            set_target_properties(${__target} PROPERTIES
+                INTERPROCEDURAL_OPTIMIZATION OFF
+                INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL OFF
+                INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF
+                INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF
+            )
+        endif()
         # Needed by both MSVC and MinGW, otherwise some APIs we need will not be available.
         if(WIN32)
             set(_WIN32_WINNT_WIN10 0x0A00)
@@ -389,8 +402,6 @@ function(setup_compile_params)
                     $<$<NOT:$<CONFIG:Debug>>:/OPT:REF /OPT:ICF /OPT:LBR>
                     /DYNAMICBASE /NXCOMPAT /LARGEADDRESSAWARE /WX
                 )
-                set(__target_type "UNKNOWN")
-                get_target_property(__target_type ${__target} TYPE)
                 if(__target_type STREQUAL "EXECUTABLE")
                     target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/GA>)
                     target_link_options(${__target} PRIVATE /TSAWARE)
@@ -1221,7 +1232,7 @@ function(query_qt_paths)
 endfunction()
 
 function(query_qt_library_info)
-    cmake_parse_arguments(QT_ARGS "" "STATIC;SHARED" "" ${ARGN})
+    cmake_parse_arguments(QT_ARGS "" "STATIC;SHARED;VERSION" "" ${ARGN})
     find_package(QT NAMES Qt6 Qt5 QUIET COMPONENTS Core)
     find_package(Qt${QT_VERSION_MAJOR} QUIET COMPONENTS Core)
     if(NOT (Qt6_FOUND OR Qt5_FOUND))
@@ -1244,5 +1255,8 @@ function(query_qt_library_info)
                 set(${QT_ARGS_SHARED} ON PARENT_SCOPE)
             endif()
         endif()
+    endif()
+    if(QT_ARGS_VERSION)
+        set(${QT_ARGS_VERSION} "${QT_VERSION}" PARENT_SCOPE)
     endif()
 endfunction()
