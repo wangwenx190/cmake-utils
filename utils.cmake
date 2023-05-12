@@ -151,6 +151,11 @@ function(setup_project)
                     string(REGEX REPLACE "[-|/]w " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
                     string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all|X] " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
                 endif()
+                if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+                    if(NOT ("x${CMAKE_C_FLAGS_RELEASE}" STREQUAL "x"))
+                        string(REGEX REPLACE "-O[d|0|1|2|3|fast] " " " CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
+                    endif()
+                endif()
                 if(PROJ_ARGS_NO_WARNING)
                     string(APPEND CMAKE_C_FLAGS " /w ")
                 elseif(PROJ_ARGS_MAX_WARNING)
@@ -166,13 +171,24 @@ function(setup_project)
                     if(NOT ("x${CMAKE_C_FLAGS_RELEASE}" STREQUAL "x"))
                         string(REGEX REPLACE "[-|/]Ob[0|1|2|3] " " " CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
                     endif()
-                    string(APPEND CMAKE_C_FLAGS_RELEASE " /Ob3 ")
+                    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+                        string(APPEND CMAKE_C_FLAGS_RELEASE " /Ob2 ")
+                    else()
+                        string(APPEND CMAKE_C_FLAGS_RELEASE " /Ob3 ")
+                    endif()
+                    set(CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE} PARENT_SCOPE)
+                endif()
+                if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+                    string(APPEND CMAKE_C_FLAGS_RELEASE " /clang:-Ofast ")
                     set(CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE} PARENT_SCOPE)
                 endif()
             else()
                 if(NOT ("x${CMAKE_C_FLAGS}" STREQUAL "x"))
                     string(REPLACE "-w " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
                     string(REGEX REPLACE "-W[all|extra|error|pedantic] " " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+                endif()
+                if(NOT ("x${CMAKE_C_FLAGS_RELEASE}" STREQUAL "x"))
+                    string(REGEX REPLACE "-O[d|0|1|2|3|fast] " " " CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
                 endif()
                 if(PROJ_ARGS_NO_WARNING)
                     string(APPEND CMAKE_C_FLAGS " -w ")
@@ -184,7 +200,9 @@ function(setup_project)
                 if(PROJ_ARGS_WARNINGS_ARE_ERRORS)
                     string(APPEND CMAKE_C_FLAGS " -Werror ")
                 endif()
+                string(APPEND CMAKE_C_FLAGS_RELEASE " -Ofast ")
                 set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} PARENT_SCOPE)
+                set(CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE} PARENT_SCOPE)
             endif()
         elseif(__lang STREQUAL "CXX")
             enable_language(CXX)
@@ -200,6 +218,11 @@ function(setup_project)
                     string(REGEX REPLACE "[-|/]EH(a-?|r-?|s-?|c-?)+ " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
                     string(REGEX REPLACE "[-|/]w " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
                     string(REGEX REPLACE "[-|/]W[0|1|2|3|4|all|X] " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+                endif()
+                if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                    if(NOT ("x${CMAKE_CXX_FLAGS_RELEASE}" STREQUAL "x"))
+                        string(REGEX REPLACE "-O[d|0|1|2|3|fast] " " " CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+                    endif()
                 endif()
                 if(PROJ_ARGS_NO_WARNING)
                     string(APPEND CMAKE_CXX_FLAGS " /w ")
@@ -226,13 +249,24 @@ function(setup_project)
                     if(NOT ("x${CMAKE_CXX_FLAGS_RELEASE}" STREQUAL "x"))
                         string(REGEX REPLACE "[-|/]Ob[0|1|2|3] " " " CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
                     endif()
-                    string(APPEND CMAKE_CXX_FLAGS_RELEASE " /Ob3 ")
+                    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                        string(APPEND CMAKE_CXX_FLAGS_RELEASE " /Ob2 ")
+                    else()
+                        string(APPEND CMAKE_CXX_FLAGS_RELEASE " /Ob3 ")
+                    endif()
+                    set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} PARENT_SCOPE)
+                endif()
+                if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                    string(APPEND CMAKE_CXX_FLAGS_RELEASE " /clang:-Ofast ")
                     set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} PARENT_SCOPE)
                 endif()
             else()
                 if(NOT ("x${CMAKE_CXX_FLAGS}" STREQUAL "x"))
                     string(REPLACE "-w " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
                     string(REGEX REPLACE "-W[all|extra|error|pedantic] " " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+                endif()
+                if(NOT ("x${CMAKE_CXX_FLAGS_RELEASE}" STREQUAL "x"))
+                    string(REGEX REPLACE "-O[d|0|1|2|3|fast] " " " CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
                 endif()
                 if(PROJ_ARGS_NO_WARNING)
                     string(APPEND CMAKE_CXX_FLAGS " -w ")
@@ -254,7 +288,9 @@ function(setup_project)
                 else()
                     string(APPEND CMAKE_CXX_FLAGS " -fno-exceptions ")
                 endif()
+                string(APPEND CMAKE_CXX_FLAGS_RELEASE " -Ofast ")
                 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} PARENT_SCOPE)
+                set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} PARENT_SCOPE)
             endif()
         elseif(__lang STREQUAL "RC")
             if(WIN32)
@@ -394,13 +430,13 @@ function(setup_compile_params)
                 STRICT # https://learn.microsoft.com/en-us/windows/win32/winprog/enabling-strict
                 WIN32_LEAN_AND_MEAN WINRT_LEAN_AND_MEAN # Filter out some rarely used headers, to increase compilation speed.
             )
-            if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang") # Clang-CL doesn't support most of these parameters.
+            if(NOT (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
                 target_compile_options(${__target} PRIVATE
                     /bigobj /utf-8 $<$<NOT:$<CONFIG:Debug>>:/fp:fast /GT /Gw /Gy /Zc:inline>
                 )
                 target_link_options(${__target} PRIVATE
                     $<$<NOT:$<CONFIG:Debug>>:/OPT:REF /OPT:ICF /OPT:LBR>
-                    /DYNAMICBASE /NXCOMPAT /LARGEADDRESSAWARE /WX
+                    /DYNAMICBASE /FIXED:NO /NXCOMPAT /LARGEADDRESSAWARE /WX
                 )
                 if(__target_type STREQUAL "EXECUTABLE")
                     target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/GA>)
@@ -423,6 +459,9 @@ function(setup_compile_params)
                         target_compile_options(${__target} PRIVATE /d2FH4)
                     endif()
                 endif()
+                if(MSVC_VERSION GREATER_EQUAL 1925) # Visual Studio 2019 version 16.5
+                    target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/QIntel-jcc-erratum>)
+                endif()
                 if(MSVC_VERSION GREATER_EQUAL 1929) # Visual Studio 2019 version 16.10
                     target_compile_options(${__target} PRIVATE /await:strict)
                 elseif(MSVC_VERSION GREATER_EQUAL 1900) # Visual Studio 2015
@@ -438,11 +477,6 @@ function(setup_compile_params)
                 if(COM_ARGS_INTELCET)
                     if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
                         target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/CETCOMPAT>)
-                    endif()
-                endif()
-                if(COM_ARGS_INTELJCC)
-                    if(MSVC_VERSION GREATER_EQUAL 1925) # Visual Studio 2019 version 16.5
-                        target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/QIntel-jcc-erratum>)
                     endif()
                 endif()
                 if(COM_ARGS_SPECTRE)
@@ -509,41 +543,39 @@ function(setup_compile_params)
                 endif()
             endif()
         else()
-            # MinGW also supports these flags.
             target_compile_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:-ffp-contract=fast -ffast-math -ffunction-sections -fdata-sections>
+                -pipe # Use pipes for communicating between sub-processes. Faster. Have no effect for Clang.
+                $<$<NOT:$<CONFIG:Debug>>:-ffp-contract=fast -fomit-frame-pointer -ffunction-sections -fdata-sections>
             )
+            target_link_options(${__target} PRIVATE
+                $<$<NOT:$<CONFIG:Debug>>:-Wl,--icf=all> # Is it supported by other linkers than LLD?
+            )
+            #[[target_compile_options(${__target} PRIVATE
+                $<$<NOT:$<CONFIG:Debug>>:-fsanitize=shadow-call-stack -fno-stack-protector>
+            )
+            target_link_options(${__target} PRIVATE
+                $<$<NOT:$<CONFIG:Debug>>:-fsanitize=shadow-call-stack -fno-stack-protector>
+            )]]
             if(APPLE)
                 target_link_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:-Wl,-dead_strip>
+                    -Wl,-fatal_warnings
+                    $<$<NOT:$<CONFIG:Debug>>:-Wl,-dead_strip -Wl,-no_data_in_code_info -Wl,-no_function_starts>
                 )
             else()
                 target_link_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections>
+                    -Wl,--fatal-warnings -Wl,--build-id=sha1
+                    $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections -Wl,-O3> # Specifically tell the linker to perform optimizations.
+                )
+            endif()
+            if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+                target_compile_options(${__target} PRIVATE
+                    $<$<NOT:$<CONFIG:Debug>>:-Wa,-mbranches-within-32B-boundaries>
                 )
             endif()
             if(COM_ARGS_INTELCET)
-                if(MINGW)
-                    # Currently not supported.
-                else()
-                    target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
-                    )
-                endif()
-            endif()
-            if(COM_ARGS_INTELJCC)
-                if(MINGW)
-                    # Currently not supported.
-                else()
-                    set(__prefix)
-                    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-                        set(__prefix "-Wa,")
-                    endif()
-                    target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:${__prefix}-mbranches-within-32B-boundaries>
-                    )
-                    unset(__prefix)
-                endif()
+                target_compile_options(${__target} PRIVATE
+                    $<$<NOT:$<CONFIG:Debug>>:-mshstk -fcf-protection=full>
+                )
             endif()
             if(COM_ARGS_CFGUARD)
                 if(MINGW)
@@ -551,35 +583,20 @@ function(setup_compile_params)
                         $<$<NOT:$<CONFIG:Debug>>:-mguard=cf>
                     )
                     target_link_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-Wl,-mguard=cf>
+                        $<$<NOT:$<CONFIG:Debug>>:-Wl,-mguard=cf> # TODO: Do we need "-Wl," here?
                     )
-                else()
-                    # AppleClang says x86 doesn't support -fsanitize=cfi -fsanitize-cfi-cross-dso, why?
+                elseif(APPLE)
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
+                    )
+                else()
+                    target_compile_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:-fsanitize=cfi -fsanitize-cfi-cross-dso>
                     )
                 endif()
             endif()
             if(COM_ARGS_SPECTRE)
-                if(MINGW)
-                    # Currently not supported.
-                elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-                    target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:
-                            -mretpoline
-                            -mspeculative-load-hardening
-                        >
-                    )
-                    # AppleClang can't recognize these parameters, why?
-                    #[[target_link_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:
-                            -Wl,-z,relro
-                            -Wl,-z,now
-                            -Wl,-z,noexecstack
-                            -Wl,-z,separate-code
-                        >
-                    )]]
-                elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+                if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:
                             # These parameters are not compatible with -fcf-protection=full
@@ -590,6 +607,104 @@ function(setup_compile_params)
                             -fcf-protection=full
                         >
                     )
+                endif()
+            endif()
+        endif()
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            set(__lto_enabled)
+            if(DEFINED CMAKE_BUILD_TYPE)
+                set(__upper_type)
+                string(TOUPPER ${CMAKE_BUILD_TYPE} __upper_type)
+                get_target_property(__lto_enabled ${__target} INTERPROCEDURAL_OPTIMIZATION_${__upper_type})
+            endif()
+            if(NOT __lto_enabled)
+                get_target_property(__lto_enabled ${__target} INTERPROCEDURAL_OPTIMIZATION)
+            endif()
+            if(__lto_enabled)
+                target_compile_options(${__target} PRIVATE
+                    $<$<NOT:$<CONFIG:Debug>>:-fsplit-lto-unit -fwhole-program-vtables>
+                )
+                if(MSVC)
+                    target_link_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:/OPT:lldltojobs=all /OPT:lldlto=3> # /lldltocachepolicy:cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
+                    )
+                else()
+                    target_link_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:-fwhole-program-vtables -Wl,--thinlto-jobs=all -Wl,--lto-O3> # -Wl,--thinlto-cache-policy=cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
+                    )
+                endif()
+            endif()
+            target_compile_options(${__target} PRIVATE
+                -fcolor-diagnostics
+                # Enable -fmerge-all-constants. This used to be the default in clang
+                # for over a decade. It makes clang non-conforming, but is fairly safe
+                # in practice and saves some binary size.
+                -fmerge-all-constants
+            )
+            if(MSVC)
+                # Required to make the 19041 SDK compatible with clang-cl.
+                target_compile_definitions(${__target} PRIVATE __WRL_ENABLE_FUNCTION_STATICS__)
+                target_compile_options(${__target} PRIVATE
+                    /bigobj /utf-8 /FS
+                    -fmsc-version=1935 # Tell clang-cl to emulate Visual Studio 2022 version 17.5
+                    # This flag enforces that member pointer base types are complete.
+                    # It helps prevent us from running into problems in the Microsoft C++ ABI.
+                    -fcomplete-member-pointers
+                    # Consistently use backslash as the path separator when expanding the
+                    # __FILE__ macro when targeting Windows regardless of the build environment.
+                    -ffile-reproducible
+                    # Enable ANSI escape codes if something emulating them is around (cmd.exe
+                    # doesn't understand ANSI escape codes by default).
+                    -fansi-escape-codes
+                    /Zc:dllexportInlines- # Do not export inline member functions. This is similar to "-fvisibility-inlines-hidden".                    
+                    /Zc:char8_t /Zc:sizedDealloc /Zc:strictStrings /Zc:threadSafeInit /Zc:trigraphs /Zc:twoPhase
+                    /clang:-mcx16 # Needed by _InterlockedCompareExchange128() from CPP/WinRT.
+                    $<$<NOT:$<CONFIG:Debug>>:/clang:-mbranches-within-32B-boundaries /fp:fast /Gw /Gy /Zc:inline>
+                )
+                target_link_options(${__target} PRIVATE
+                    --color-diagnostics
+                    /DYNAMICBASE /FIXED:NO /NXCOMPAT /LARGEADDRESSAWARE
+                    $<$<NOT:$<CONFIG:Debug>>:/OPT:REF /OPT:ICF /OPT:LBR /OPT:lldtailmerge>
+                )
+                if(__target_type STREQUAL "EXECUTABLE")
+                    target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/GA>)
+                    target_link_options(${__target} PRIVATE /TSAWARE)
+                endif()
+                if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                    target_link_options(${__target} PRIVATE /HIGHENTROPYVA)
+                endif()
+                if(COM_ARGS_CFGUARD)
+                    target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:cf>)
+                    target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/GUARD:CF>)
+                endif()
+                if(COM_ARGS_INTELCET)
+                    target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/CETCOMPAT>)
+                endif()
+                if(COM_ARGS_EHCONTGUARD)
+                    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                        target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:ehcont>)
+                        target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:ehcont>)
+                    endif()
+                endif()
+            else()
+                target_compile_options(${__target} PRIVATE -fuse-ld=lld)
+                target_link_options(${__target} PRIVATE
+                    -Wl,--color-diagnostics -Wl,-z,keep-text-section-prefix
+                )
+                if(APPLE)
+                    target_compile_options(${__target} PRIVATE -fobjc-arc -fobjc-call-cxx-cdtors) # http://clang.llvm.org/docs/AutomaticReferenceCounting.html
+                    target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:-Wl,--strict-auto-link>)
+                endif()
+                if(COM_ARGS_SPECTRE)
+                    target_compile_options(${__target} PRIVATE
+                        $<$<NOT:$<CONFIG:Debug>>:-mretpoline -mspeculative-load-hardening>
+                    )
+                    # AppleClang can't recognize these parameters, why?
+                    if(NOT APPLE)
+                        target_link_options(${__target} PRIVATE
+                            $<$<NOT:$<CONFIG:Debug>>:-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code>
+                        )
+                    endif()
                 endif()
             endif()
         endif()
