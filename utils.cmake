@@ -543,19 +543,13 @@ function(setup_compile_params)
                 endif()
             endif()
         else()
+            if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+                # Use pipes for communicating between sub-processes. Faster. Have no effect for Clang.
+                target_compile_options(${__target} PRIVATE -pipe)
+            endif()
             target_compile_options(${__target} PRIVATE
-                -pipe # Use pipes for communicating between sub-processes. Faster. Have no effect for Clang.
                 $<$<NOT:$<CONFIG:Debug>>:-ffp-contract=fast -fomit-frame-pointer -ffunction-sections -fdata-sections>
             )
-            target_link_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:-Wl,--icf=all> # Is it supported by other linkers than LLD?
-            )
-            #[[target_compile_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:-fsanitize=shadow-call-stack -fno-stack-protector>
-            )
-            target_link_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:-fsanitize=shadow-call-stack -fno-stack-protector>
-            )]]
             if(APPLE)
                 target_link_options(${__target} PRIVATE
                     -Wl,-fatal_warnings
@@ -574,7 +568,7 @@ function(setup_compile_params)
             endif()
             if(COM_ARGS_INTELCET)
                 target_compile_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:-mshstk -fcf-protection=full>
+                    $<$<NOT:$<CONFIG:Debug>>:-mshstk>
                 )
             endif()
             if(COM_ARGS_CFGUARD)
@@ -589,24 +583,19 @@ function(setup_compile_params)
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
                     )
-                else()
-                    target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-fsanitize=cfi -fsanitize-cfi-cross-dso>
-                    )
                 endif()
             endif()
             if(COM_ARGS_SPECTRE)
                 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-                    target_compile_options(${__target} PRIVATE
+                    #[[target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:
                             # These parameters are not compatible with -fcf-protection=full
-                            #[[-mindirect-branch=thunk
+                            -mindirect-branch=thunk
                             -mfunction-return=thunk
                             -mindirect-branch-register
-                            -mindirect-branch-cs-prefix]]
-                            -fcf-protection=full
+                            -mindirect-branch-cs-prefix
                         >
-                    )
+                    )]]
                 endif()
             endif()
         endif()
@@ -634,6 +623,15 @@ function(setup_compile_params)
                     )
                 endif()
             endif()
+            target_link_options(${__target} PRIVATE
+                $<$<NOT:$<CONFIG:Debug>>:-Wl,--icf=all>
+            )
+            #[[target_compile_options(${__target} PRIVATE
+                $<$<NOT:$<CONFIG:Debug>>:-fsanitize=shadow-call-stack -fno-stack-protector>
+            )
+            target_link_options(${__target} PRIVATE
+                $<$<NOT:$<CONFIG:Debug>>:-fsanitize=shadow-call-stack -fno-stack-protector>
+            )]]
             target_compile_options(${__target} PRIVATE
                 -fcolor-diagnostics
                 # Enable -fmerge-all-constants. This used to be the default in clang
@@ -703,6 +701,13 @@ function(setup_compile_params)
                     if(NOT APPLE)
                         target_link_options(${__target} PRIVATE
                             $<$<NOT:$<CONFIG:Debug>>:-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code>
+                        )
+                    endif()
+                endif()
+                if(COM_ARGS_CFGUARD)
+                    if(NOT APPLE)
+                        target_compile_options(${__target} PRIVATE
+                            $<$<NOT:$<CONFIG:Debug>>:-fsanitize=cfi -fsanitize-cfi-cross-dso>
                         )
                     endif()
                 endif()
