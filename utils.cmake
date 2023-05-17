@@ -654,7 +654,7 @@ function(setup_compile_params)
                     # Enable ANSI escape codes if something emulating them is around (cmd.exe
                     # doesn't understand ANSI escape codes by default).
                     -fansi-escape-codes
-                    /Zc:dllexportInlines- # Do not export inline member functions. This is similar to "-fvisibility-inlines-hidden".                    
+                    /Zc:dllexportInlines- # Do not export inline member functions. This is similar to "-fvisibility-inlines-hidden".
                     /Zc:char8_t /Zc:sizedDealloc /Zc:strictStrings /Zc:threadSafeInit /Zc:trigraphs /Zc:twoPhase
                     /clang:-mcx16 # Needed by _InterlockedCompareExchange128() from CPP/WinRT.
                     $<$<NOT:$<CONFIG:Debug>>:/clang:-mbranches-within-32B-boundaries /fp:fast /Gw /Gy /Zc:inline>
@@ -685,12 +685,13 @@ function(setup_compile_params)
                     endif()
                 endif()
             else()
-                target_compile_options(${__target} PRIVATE -fuse-ld=lld)
+                #target_compile_options(${__target} PRIVATE -fuse-ld=lld)
                 target_link_options(${__target} PRIVATE
                     -Wl,--color-diagnostics -Wl,-z,keep-text-section-prefix
                 )
                 if(APPLE)
-                    target_compile_options(${__target} PRIVATE -fobjc-arc -fobjc-call-cxx-cdtors) # http://clang.llvm.org/docs/AutomaticReferenceCounting.html
+                    # TODO: -fobjc-arc (http://clang.llvm.org/docs/AutomaticReferenceCounting.html)
+                    target_compile_options(${__target} PRIVATE  -fobjc-call-cxx-cdtors)
                     target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:-Wl,--strict-auto-link>)
                 endif()
                 if(COM_ARGS_SPECTRE)
