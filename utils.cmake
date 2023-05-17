@@ -685,9 +685,8 @@ function(setup_compile_params)
                     endif()
                 endif()
             else()
-                #target_compile_options(${__target} PRIVATE -fuse-ld=lld)
                 target_link_options(${__target} PRIVATE
-                    -Wl,--color-diagnostics -Wl,-z,keep-text-section-prefix
+                    -fuse-ld=lld -Wl,--color-diagnostics -Wl,-z,keep-text-section-prefix
                 )
                 if(APPLE)
                     # TODO: -fobjc-arc (http://clang.llvm.org/docs/AutomaticReferenceCounting.html)
