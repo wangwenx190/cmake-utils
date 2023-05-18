@@ -685,19 +685,19 @@ function(setup_compile_params)
                     endif()
                 endif()
             else()
-                target_link_options(${__target} PRIVATE
-                    -fuse-ld=lld -Wl,--color-diagnostics -Wl,-z,keep-text-section-prefix
-                )
+                target_link_options(${__target} PRIVATE -fuse-ld=lld -Wl,--color-diagnostics)
                 if(APPLE)
                     # TODO: -fobjc-arc (http://clang.llvm.org/docs/AutomaticReferenceCounting.html)
-                    target_compile_options(${__target} PRIVATE  -fobjc-call-cxx-cdtors)
+                    target_compile_options(${__target} PRIVATE -fobjc-call-cxx-cdtors)
                     target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:-Wl,--strict-auto-link>)
+                else()
+                    target_link_options(${__target} PRIVATE -Wl,-z,keep-text-section-prefix)
                 endif()
                 if(COM_ARGS_SPECTRE)
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:-mretpoline -mspeculative-load-hardening>
                     )
-                    # AppleClang can't recognize these parameters, why?
+                    # AppleClang can't recognize "-z" parameters, why?
                     if(NOT APPLE)
                         target_link_options(${__target} PRIVATE
                             $<$<NOT:$<CONFIG:Debug>>:-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code>
