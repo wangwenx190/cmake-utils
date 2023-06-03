@@ -581,7 +581,7 @@ function(setup_compile_params)
                         $<$<NOT:$<CONFIG:Debug>>:-mguard=cf>
                     )
                     target_link_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-Wl,-mguard=cf> # TODO: Do we need "-Wl," here?
+                        $<$<NOT:$<CONFIG:Debug>>:-mguard=cf>
                     )
                 elseif(APPLE OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
                     target_compile_options(${__target} PRIVATE
