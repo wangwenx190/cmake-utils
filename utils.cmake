@@ -423,14 +423,14 @@ function(setup_compile_params)
         endif()
         if(MSVC)
             target_compile_definitions(${__target} PRIVATE
-                _CRT_NON_CONFORMING_SWPRINTFS _CRT_SECURE_NO_WARNINGS
-                _CRT_SECURE_NO_DEPRECATE _CRT_NONSTDC_NO_WARNINGS
-                _CRT_NONSTDC_NO_DEPRECATE
+                _CRT_NON_CONFORMING_SWPRINTFS
+                _CRT_SECURE_NO_WARNINGS _CRT_SECURE_NO_DEPRECATE
+                _CRT_NONSTDC_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE
                 _SCL_SECURE_NO_WARNINGS _SCL_SECURE_NO_DEPRECATE
                 _ENABLE_EXTENDED_ALIGNED_STORAGE # STL fixed a bug which breaks binary compatibility, thus need to be enabled manually by defining this.
-                _USE_MATH_DEFINES # Enable the PI constant define for the math headers.
-                NOMINMAX # Avoid the Win32 macros conflict with std::min() and std::max().
-                UNICODE _UNICODE # Use the -W APIs by default.
+                _USE_MATH_DEFINES # Enable the PI constant define for the math headers and also fix the redefinition error caused by Windows SDK's unguarded math macros.
+                NOMINMAX # Avoid the Win32 macros min/max conflict with std::min()/std::max().
+                UNICODE _UNICODE # Use the -W APIs by default (the -A APIs are just wrappers of the -W APIs internally, so calling the -W APIs directly is more efficient).
                 STRICT # https://learn.microsoft.com/en-us/windows/win32/winprog/enabling-strict
                 WIN32_LEAN_AND_MEAN WINRT_LEAN_AND_MEAN # Filter out some rarely used headers, to increase compilation speed.
             )
@@ -452,9 +452,10 @@ function(setup_compile_params)
                 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
                     target_link_options(${__target} PRIVATE /HIGHENTROPYVA)
                 endif()
-                #[[if(MSVC_VERSION GREATER_EQUAL 1910) # Visual Studio 2017 version 15.0
-                    target_link_options(${__target} PRIVATE /DEPENDENTLOADFLAG:0x800)
-                endif()]]
+                if(MSVC_VERSION GREATER_EQUAL 1910) # Visual Studio 2017 version 15.0 ~ 15.2
+                    #target_link_options(${__target} PRIVATE /DEPENDENTLOADFLAG:0x800)
+                    target_compile_options(${__target} PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:/Zf>)
+                endif()
                 if(MSVC_VERSION GREATER_EQUAL 1915) # Visual Studio 2017 version 15.8
                     target_compile_options(${__target} PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:/JMC>)
                 endif()
@@ -462,6 +463,9 @@ function(setup_compile_params)
                     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
                         target_compile_options(${__target} PRIVATE /d2FH4)
                     endif()
+                endif()
+                if(MSVC_VERSION GREATER_EQUAL 1924) # Visual Studio 2019 version 16.4
+                    target_compile_options(${__target} PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:/ZH:SHA_256>)
                 endif()
                 if(MSVC_VERSION GREATER_EQUAL 1925) # Visual Studio 2019 version 16.5
                     target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/QIntel-jcc-erratum>)
@@ -547,26 +551,28 @@ function(setup_compile_params)
                 endif()
             endif()
         else()
-            if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-                # Use pipes for communicating between sub-processes. Faster. Have no effect for Clang.
-                target_compile_options(${__target} PRIVATE -pipe)
-            endif()
             target_compile_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:-ffp-contract=fast -fomit-frame-pointer -ffunction-sections -fdata-sections>
+                -fthreadsafe-statics
+                $<$<NOT:$<CONFIG:Debug>>:-ffp-contract=fast -fomit-frame-pointer -ffunction-sections -fdata-sections -funroll-all-loops>
+            )
+            target_link_options(${__target} PRIVATE
+                $<$<NOT:$<CONFIG:Debug>>:-Wl,--no-keep-memory -Wl,-z,relro>
+                $<$<CONFIG:Release>:-Wl,--strip-all>
             )
             if(APPLE)
                 target_link_options(${__target} PRIVATE
-                    -Wl,-fatal_warnings
+                    -Wl,-fatal_warnings -Wl,-undefined,error
                     $<$<NOT:$<CONFIG:Debug>>:-Wl,-dead_strip -Wl,-no_data_in_code_info -Wl,-no_function_starts>
                 )
             else()
                 target_link_options(${__target} PRIVATE
-                    -Wl,--fatal-warnings -Wl,--build-id=sha1
-                    $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections -Wl,-O3> # Specifically tell the linker to perform optimizations.
+                    -Wl,--fatal-warnings -Wl,--build-id=sha1 -Wl,--no-undefined
+                    $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections -Wl,-O3 -Wl,-z,now -Wl,-z,noexecstack>
                 )
             endif()
             if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
                 target_compile_options(${__target} PRIVATE
+                    -pipe # Use pipes for communicating between sub-processes. Faster. Have no effect for Clang.
                     $<$<NOT:$<CONFIG:Debug>>:-Wa,-mbranches-within-32B-boundaries>
                 )
             endif()
@@ -691,7 +697,7 @@ function(setup_compile_params)
             else()
                 target_link_options(${__target} PRIVATE -fuse-ld=lld -Wl,--color-diagnostics)
                 if(APPLE)
-                    # TODO: -fobjc-arc (http://clang.llvm.org/docs/AutomaticReferenceCounting.html)
+                    # TODO: -fobjc-arc, -fobjc-arc-exceptions (http://clang.llvm.org/docs/AutomaticReferenceCounting.html)
                     target_compile_options(${__target} PRIVATE -fobjc-call-cxx-cdtors)
                     target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:-Wl,--strict-auto-link>)
                 else()
@@ -701,12 +707,6 @@ function(setup_compile_params)
                     target_compile_options(${__target} PRIVATE
                         $<$<NOT:$<CONFIG:Debug>>:-mretpoline -mspeculative-load-hardening>
                     )
-                    # AppleClang can't recognize "-z" parameters, why?
-                    if(NOT APPLE)
-                        target_link_options(${__target} PRIVATE
-                            $<$<NOT:$<CONFIG:Debug>>:-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code>
-                        )
-                    endif()
                 endif()
                 if(COM_ARGS_CFGUARD)
                     if(NOT APPLE)
