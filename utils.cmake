@@ -388,7 +388,7 @@ function(setup_compile_params)
         message(WARNING "setup_compile_params: Current toolchain is not supported. Only LLVM-MinGW (https://github.com/mstorsjo/llvm-mingw) has partial support.")
         return()
     endif()
-    cmake_parse_arguments(COM_ARGS "SPECTRE;EHCONTGUARD;PERMISSIVE;INTELCET;INTELJCC;CFGUARD" "" "TARGETS" ${ARGN})
+    cmake_parse_arguments(COM_ARGS "SPECTRE;EHCONTGUARD;PERMISSIVE;INTELCET;INTELJCC;CFGUARD;FORCE_LTO" "" "TARGETS" ${ARGN})
     if(NOT COM_ARGS_TARGETS)
         message(AUTHOR_WARNING "setup_compile_params: You need to specify at least one target for this function!")
         return()
@@ -399,10 +399,10 @@ function(setup_compile_params)
     foreach(__target ${COM_ARGS_TARGETS})
         set(__target_type "UNKNOWN")
         get_target_property(__target_type ${__target} TYPE)
-        # Turn off LTCG/LTO for static libraries, because enabling it for the static libraries
-        # will destroy the binary compatibility of them and some compilers will also produce
-        # some way too large object files which we can't accept in most cases.
-        if(__target_type STREQUAL "STATIC_LIBRARY")
+        if((__target_type STREQUAL "STATIC_LIBRARY") AND (NOT COM_ARGS_FORCE_LTO))
+            # Turn off LTCG/LTO for static libraries, because enabling it for the static libraries
+            # will destroy the binary compatibility of them and some compilers will also produce
+            # some way too large object files which we can't accept in most cases.
             set_target_properties(${__target} PROPERTIES
                 INTERPROCEDURAL_OPTIMIZATION OFF
                 INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL OFF
@@ -555,10 +555,6 @@ function(setup_compile_params)
                 -fthreadsafe-statics
                 $<$<NOT:$<CONFIG:Debug>>:-ffp-contract=fast -fomit-frame-pointer -ffunction-sections -fdata-sections -funroll-all-loops>
             )
-            target_link_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:-Wl,--no-keep-memory -Wl,-z,relro>
-                $<$<CONFIG:Release>:-Wl,--strip-all>
-            )
             if(APPLE)
                 target_link_options(${__target} PRIVATE
                     -Wl,-fatal_warnings -Wl,-undefined,error
@@ -567,7 +563,8 @@ function(setup_compile_params)
             else()
                 target_link_options(${__target} PRIVATE
                     -Wl,--fatal-warnings -Wl,--build-id=sha1 -Wl,--no-undefined
-                    $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections -Wl,-O3 -Wl,-z,now -Wl,-z,noexecstack>
+                    $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections -Wl,-O3 -Wl,--no-keep-memory -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack>
+                    $<$<CONFIG:Release>:-Wl,--strip-all>
                 )
             endif()
             if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
