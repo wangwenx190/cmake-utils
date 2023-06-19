@@ -717,7 +717,7 @@ function(setup_compile_params)
                     /Zc:dllexportInlines- # Do not export inline member functions. This is similar to "-fvisibility-inlines-hidden".
                     /Zc:char8_t /Zc:sizedDealloc /Zc:strictStrings /Zc:threadSafeInit /Zc:trigraphs /Zc:twoPhase
                     /clang:-mcx16 # Needed by _InterlockedCompareExchange128() from CPP/WinRT.
-                    $<$<NOT:$<CONFIG:Debug>>:/clang:-mbranches-within-32B-boundaries /fp:fast /Gw /Gy /Zc:inline>
+                    $<$<NOT:$<CONFIG:Debug>>:/clang:-mbranches-within-32B-boundaries /clang:-ffp-contract=fast /Gw /Gy /Zc:inline>
                 )
                 target_link_options(${__target} PRIVATE
                     --color-diagnostics
