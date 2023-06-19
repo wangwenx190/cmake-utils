@@ -630,9 +630,6 @@ function(setup_compile_params)
                     )
                 endif()
             endif()
-            target_link_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:-Wl,--icf=all>
-            )
             #[[target_compile_options(${__target} PRIVATE
                 $<$<NOT:$<CONFIG:Debug>>:-fsanitize=shadow-call-stack -fno-stack-protector>
             )
@@ -692,7 +689,7 @@ function(setup_compile_params)
                     endif()
                 endif()
             else()
-                target_link_options(${__target} PRIVATE -fuse-ld=lld -Wl,--color-diagnostics)
+                target_link_options(${__target} PRIVATE -fuse-ld=lld -Wl,--color-diagnostics $<$<NOT:$<CONFIG:Debug>>:-Wl,--icf=all)
                 if(APPLE)
                     # TODO: -fobjc-arc, -fobjc-arc-exceptions (http://clang.llvm.org/docs/AutomaticReferenceCounting.html)
                     target_compile_options(${__target} PRIVATE -fobjc-call-cxx-cdtors)
