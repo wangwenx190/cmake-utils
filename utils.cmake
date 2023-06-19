@@ -35,6 +35,22 @@ function(setup_project)
     if(PROJ_ARGS_UNPARSED_ARGUMENTS)
         message(AUTHOR_WARNING "setup_project: Unrecognized arguments: ${PROJ_ARGS_UNPARSED_ARGUMENTS}")
     endif()
+    # AUTOMOC include directory is a system include directory by default.
+    if(POLICY CMP0151)
+        cmake_policy(SET CMP0151 NEW)
+    endif()
+    # Visual Studio Generators select latest Windows SDK by default.
+    if(POLICY CMP0149)
+        cmake_policy(SET CMP0149 NEW)
+    endif()
+    # Visual Studio Generators build custom commands in parallel.
+    if(POLICY CMP0147)
+        cmake_policy(SET CMP0147 NEW)
+    endif()
+    # USE_FOLDERS global property is treated as ON by default.
+    if(POLICY CMP0143)
+        cmake_policy(SET CMP0143 NEW)
+    endif()
     # MSVC: Do not add "-Z7", "-Zi" or "-ZI" to CMAKE_<LANG>_FLAGS by default. Let developers decide.
     if(POLICY CMP0141)
         cmake_policy(SET CMP0141 NEW)
@@ -43,9 +59,45 @@ function(setup_project)
     if(NOT DEFINED CMAKE_MSVC_DEBUG_INFORMATION_FORMAT)
         set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>" PARENT_SCOPE)
     endif()
+    # The if() command supports path comparisons using PATH_EQUAL operator.
+    if(POLICY CMP0139)
+        cmake_policy(SET CMP0139 NEW)
+    endif()
+    # CheckIPOSupported uses flags from calling project.
+    if(POLICY CMP0138)
+        cmake_policy(SET CMP0138 NEW)
+    endif()
+    # LINK_LIBRARIES supports the $<LINK_ONLY:...> generator expression.
+    if(POLICY CMP0131)
+        cmake_policy(SET CMP0131 NEW)
+    endif()
+    # while() diagnoses condition evaluation errors.
+    if(POLICY CMP0130)
+        cmake_policy(SET CMP0130 NEW)
+    endif()
     # Improve language standard and extension selection.
     if(POLICY CMP0128)
         cmake_policy(SET CMP0128 NEW)
+    endif()
+    # cmake_dependent_option() supports full Condition Syntax.
+    if(POLICY CMP0127)
+        cmake_policy(SET CMP0127 NEW)
+    endif()
+    # The set(CACHE) command does not remove any normal variable of the same name from the current scope.
+    if(POLICY CMP0126)
+        cmake_policy(SET CMP0126 NEW)
+    endif()
+    # find_(path|file|library|program) have consistent behavior for cache variables.
+    if(POLICY CMP0125)
+        cmake_policy(SET CMP0125 NEW)
+    endif()
+    # foreach() loop variables are only available in the loop scope.
+    if(POLICY CMP0124)
+        cmake_policy(SET CMP0124 NEW)
+    endif()
+    # The list command detects invalid indices.
+    if(POLICY CMP0121)
+        cmake_policy(SET CMP0121 NEW)
     endif()
     # LANGUAGE source file property explicitly compiles as language.
     if(POLICY CMP0119)
@@ -54,6 +106,10 @@ function(setup_project)
     # Do not add "-GR" to CMAKE_CXX_FLAGS by default.
     if(POLICY CMP0117)
         cmake_policy(SET CMP0117 NEW)
+    endif()
+    # Ninja generators transform DEPFILEs from add_custom_command().
+    if(POLICY CMP0116)
+        cmake_policy(SET CMP0116 NEW)
     endif()
     # Source file extensions must be explicit.
     if(POLICY CMP0115)
@@ -153,7 +209,7 @@ function(setup_project)
                 endif()
                 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
                     if(NOT ("x${CMAKE_C_FLAGS_RELEASE}" STREQUAL "x"))
-                        string(REGEX REPLACE "-O[d|0|1|2|3|fast] " " " CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
+                        string(REGEX REPLACE "[-|/]O[d|0|1|2|3|fast] " " " CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
                     endif()
                 endif()
                 if(PROJ_ARGS_NO_WARNING)
@@ -221,7 +277,7 @@ function(setup_project)
                 endif()
                 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
                     if(NOT ("x${CMAKE_CXX_FLAGS_RELEASE}" STREQUAL "x"))
-                        string(REGEX REPLACE "-O[d|0|1|2|3|fast] " " " CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+                        string(REGEX REPLACE "[-|/]O[d|0|1|2|3|fast] " " " CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
                     endif()
                 endif()
                 if(PROJ_ARGS_NO_WARNING)
