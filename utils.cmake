@@ -684,7 +684,7 @@ function(setup_compile_params)
                 )
             else()
                 target_link_options(${__target} PRIVATE
-                    -Wl,--fatal-warnings -Wl,--build-id=sha1 -Wl,--no-undefined
+                    -Wl,--fatal-warnings -Wl,--build-id=sha1 -Wl,--no-undefined -Wl,--as-needed -Wl,-z,defs
                     $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections -Wl,-O3 -Wl,--no-keep-memory -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack>
                     $<$<CONFIG:Release>:-Wl,--strip-all>
                 )
