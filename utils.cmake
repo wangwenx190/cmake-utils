@@ -186,6 +186,16 @@ function(setup_project)
             set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/${__ar_dir}" PARENT_SCOPE)
         endif()
     elseif(DEFINED CMAKE_CONFIGURATION_TYPES AND NOT "x${CMAKE_CONFIGURATION_TYPES}" STREQUAL "x")
+        set(__subdir "$<LOWER_CASE:$<CONFIG>>")
+        if(NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+            set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/${__bin_dir}/${__subdir}" PARENT_SCOPE)
+        endif()
+        if(NOT DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+            set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/${__lib_dir}/${__subdir}" PARENT_SCOPE)
+        endif()
+        if(NOT DEFINED CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
+            set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/${__ar_dir}/${__subdir}" PARENT_SCOPE)
+        endif()
         foreach(__type ${CMAKE_CONFIGURATION_TYPES})
             string(TOUPPER ${__type} __type_upper)
             string(TOLOWER ${__type} __type_lower)
@@ -226,8 +236,7 @@ function(setup_project)
         endif()
     else()
         if(NOT DEFINED CMAKE_INSTALL_RPATH)
-            # FIXME: how to detect the actual library installation path?
-            #set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}" PARENT_SCOPE)
+            set(CMAKE_INSTALL_RPATH "$ORIGIN/../${__lib_dir}" PARENT_SCOPE)
         endif()
     endif()
     if(PROJ_ARGS_QT_PROJECT)
@@ -962,8 +971,46 @@ function(setup_package_export)
     )
 endfunction()
 
+function(install2)
+    cmake_parse_arguments(arg "" "" "TARGETS" ${ARGN})
+    if(NOT arg_TARGETS)
+        message(AUTHOR_WARNING "install2: you have to specify at least one target!")
+        return()
+    endif()
+    if(arg_UNPARSED_ARGUMENTS)
+        message(AUTHOR_WARNING "install2: Unrecognized arguments: ${arg_UNPARSED_ARGUMENTS}")
+    endif()
+    set(__dir_suffix "")
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(__dir_suffix "64")
+    endif()
+    include(GNUInstallDirs)
+    set(__bin_dir "${CMAKE_INSTALL_BINDIR}${__dir_suffix}")
+    set(__lib_dir "${CMAKE_INSTALL_LIBDIR}${__dir_suffix}")
+    set(__ar_dir "${CMAKE_INSTALL_LIBDIR}${__dir_suffix}")
+    if(DEFINED CMAKE_BUILD_TYPE AND NOT "x${CMAKE_BUILD_TYPE}" STREQUAL "x")
+        install(TARGETS ${arg_TARGETS}
+            BUNDLE  DESTINATION .
+            RUNTIME DESTINATION "${__bin_dir}"
+            LIBRARY DESTINATION "${__lib_dir}"
+            ARCHIVE DESTINATION "${__ar_dir}"
+        )
+    elseif(DEFINED CMAKE_CONFIGURATION_TYPES AND NOT "x${CMAKE_CONFIGURATION_TYPES}" STREQUAL "x")
+        foreach(__type ${CMAKE_CONFIGURATION_TYPES})
+            string(TOLOWER ${__type} __type_lower)
+            install(TARGETS ${arg_TARGETS}
+                CONFIGURATIONS ${__type}
+                BUNDLE  DESTINATION . # FIXME: how about macOS bundles?
+                RUNTIME DESTINATION "${__bin_dir}/${__type_lower}"
+                LIBRARY DESTINATION "${__lib_dir}/${__type_lower}"
+                ARCHIVE DESTINATION "${__ar_dir}/${__type_lower}"
+            )
+        endforeach()
+    endif()
+endfunction()
+
 function(deploy_qt_runtime)
-    cmake_parse_arguments(DEPLOY_ARGS "NO_INSTALL" "TARGET;QML_SOURCE_DIR;QML_IMPORT_DIR" "" ${ARGN})
+    cmake_parse_arguments(DEPLOY_ARGS "NO_INSTALL" "TARGET;QML_SOURCE_DIR;QML_IMPORT_DIR;TRANSLATION_DEPLOY_DIR;QML_DEPLOY_DIR;PLUGIN_DEPLOY_DIR" "" ${ARGN})
     if(NOT DEPLOY_ARGS_TARGET)
         message(AUTHOR_WARNING "deploy_qt_runtime: You need to specify a target for this function!")
         return()
@@ -992,29 +1039,40 @@ function(deploy_qt_runtime)
         return()
     endif()
     set(__is_quick_app FALSE)
+    set(__full_deploy_command "")
     if(WIN32)
-        set(__old_deploy_params)
+        set(__old_deploy_params "")
         if(QT_VERSION_MAJOR LESS 6)
             set(__old_deploy_params
-                --no-webkit2
-                #--no-angle
+                --no-webkit2 # Only needed by some very old Qt5 versions, we don't want it.
+                #--no-angle # We'll most likely need ANGLE when we use OpenGL, so we'd better ship it.
             )
         endif()
-        set(__quick_deploy_params)
+        if(QT_VERSION VERSION_LESS "6.5")
+            set(__old_deploy_params
+                ${__old_deploy_params}
+                --no-virtualkeyboard # windeployqt always copy virtual keyboard libraries if they can be found. But almost all Qt applications don't need them, we also don't want them either.
+            )
+        endif()
+        set(__quick_deploy_params "")
         if(DEPLOY_ARGS_QML_SOURCE_DIR)
             set(__is_quick_app TRUE)
             set(__quick_deploy_params
                 --qmldir "${DEPLOY_ARGS_QML_SOURCE_DIR}"
             )
-            if(QT_VERSION VERSION_GREATER_EQUAL "6.6") # FIXME
+            set(__qml_dir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../qml")
+            if(DEPLOY_ARGS_QML_DEPLOY_DIR)
+                set(__qml_dir "${DEPLOY_ARGS_QML_DEPLOY_DIR}")
+            endif()
+            if(QT_VERSION VERSION_GREATER_EQUAL "6.5")
                 set(__quick_deploy_params
                     ${__quick_deploy_params}
-                    --qml-deploy-dir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../qml"
+                    --qml-deploy-dir "${__qml_dir}"
                 )
             else()
                 set(__quick_deploy_params
                     ${__quick_deploy_params}
-                    --dir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../qml"
+                    --dir "${__qml_dir}"
                 )
             endif()
         endif()
@@ -1025,32 +1083,46 @@ function(deploy_qt_runtime)
                 --qmlimport "${DEPLOY_ARGS_QML_IMPORT_DIR}"
             )
         endif()
-        set(__extra_deploy_params)
-        if(QT_VERSION VERSION_GREATER_EQUAL "6.6") # FIXME
+        set(__extra_deploy_params "")
+        if(QT_VERSION VERSION_GREATER_EQUAL "6.5")
+            set(__translations_dir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../translations")
+            if(DEPLOY_ARGS_TRANSLATION_DEPLOY_DIR)
+                set(__translations_dir "${DEPLOY_ARGS_TRANSLATION_DEPLOY_DIR}")
+            endif()
             set(__extra_deploy_params
-                --translationdir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../translations"
+                --translationdir "${__translations_dir}"
             )
         endif()
-        add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
-            "${__deploy_tool}"
-            $<$<CONFIG:Debug>:--debug>
-            $<$<CONFIG:MinSizeRel,Release,RelWithDebInfo>:--release>
-            --libdir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>"
-            --plugindir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../plugins"
-            #--no-translations
-            #--no-system-d3d-compiler
-            --no-virtualkeyboard
-            --no-compiler-runtime
-            #--no-opengl-sw
-            --force
-            #--verbose 0
+        set(__plugins_dir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../plugins")
+        if(DEPLOY_ARGS_PLUGIN_DEPLOY_DIR)
+            set(__plugins_dir "${DEPLOY_ARGS_PLUGIN_DEPLOY_DIR}")
+        endif()
+        set(__extra_deploy_params
+            ${__extra_deploy_params}
+            --plugindir "${DEPLOY_ARGS_PLUGIN_DEPLOY_DIR}" # windeployqt by default will copy all plugins to the application root folder which is very bad.
+        )
+        set(__full_deploy_params
+            $<$<CONFIG:Debug>:--debug> # Sometimes windeployqt can't determine the build type, we tell it explicitly.
+            $<$<CONFIG:MinSizeRel,Release,RelWithDebInfo>:--release> # Same as above.
+            --libdir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>" # Explicitly set the library deploy path (where to copy Qt6XXX.dll) because if may be affected by other parameters we use.
+            #--no-translations # It's better to ship Qt translations altogether, otherwise the strings from Qt will stay English.
+            #--no-system-d3d-compiler # QtGui will need d3dcompiler_XX.dll. If we don't ship them, you'll have to make sure the target machine has these libraries.
+            #--no-compiler-runtime # The target machine may not installed the same MSVC runtime as the develop machine, so it's better to ship it as well.
+            --compiler-runtime # Tell windeployqt we need the MSVC runtime explicitly, otherwise it may not copy it.
+            --no-opengl-sw # Mesa3D library llvmpipe backend, mostly for PCs without GPU support. We don't need it.
+            --force # Always overwrite existing files, to make sure we always get the most updated files.
+            --verbose 2 # Output detailed running log, to help locate the deploy issues if any.
             ${__quick_deploy_params}
             ${__old_deploy_params}
             ${__extra_deploy_params}
+        )
+        set(__full_deploy_command
+            "${__deploy_tool}"
+            ${__full_deploy_params}
             "$<TARGET_FILE:${DEPLOY_ARGS_TARGET}>"
         )
     elseif(APPLE)
-        set(__quick_deploy_params)
+        set(__quick_deploy_params "")
         if(DEPLOY_ARGS_QML_SOURCE_DIR)
             set(__is_quick_app TRUE)
             set(__quick_deploy_params
@@ -1064,43 +1136,31 @@ function(deploy_qt_runtime)
                 -qmlimport="${DEPLOY_ARGS_QML_IMPORT_DIR}"
             )
         endif()
-        add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
-            "${__deploy_tool}"
-            "$<TARGET_BUNDLE_DIR:${DEPLOY_ARGS_TARGET}>"
-            #-verbose=0
+        set(__full_deploy_params
+            -verbose=2
             ${__quick_deploy_params}
         )
+        set(__full_deploy_command
+            "${__deploy_tool}"
+            "$<TARGET_BUNDLE_DIR:${DEPLOY_ARGS_TARGET}>"
+            ${__full_deploy_params}
+        )
     elseif(UNIX)
-        # TODO
+        # TODO: Linux
     endif()
-    #[[add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
-        "${CMAKE_COMMAND}"
-        -E copy
-        "${CMAKE_CURRENT_LIST_DIR}/qt.conf" # FIXME
-        "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>"
-    )]]
-    if(MSVC)
-        add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
-            "${CMAKE_COMMAND}"
-            -E rm -f
-            "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/$<TARGET_FILE_BASE_NAME:${DEPLOY_ARGS_TARGET}>.manifest"
-        )
-    endif()
-    add_custom_command(TARGET ${DEPLOY_ARGS_TARGET} POST_BUILD COMMAND
-        "${CMAKE_COMMAND}"
-        -E rm -rf
-        "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/translations"
-        "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/qml/translations"
-        "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../qml/translations"
+    set(__deploy_target ${DEPLOY_ARGS_TARGET}_deployqt)
+    add_custom_target(${__deploy_target}
+        COMMAND ${__full_deploy_command}
+        WORKING_DIRECTORY "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>"
+        COMMENT "Deploying Qt dependencies for target ${DEPLOY_ARGS_TARGET} ..."
+        VERBATIM
     )
+    # Normally CMake will do this for us automatically, but in case it doesn't ...
+    add_dependencies(${__deploy_target} ${DEPLOY_ARGS_TARGET})
     if(NOT DEPLOY_ARGS_NO_INSTALL)
-        include(GNUInstallDirs)
-        install(TARGETS ${DEPLOY_ARGS_TARGET}
-            BUNDLE  DESTINATION .
-            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-        )
+        install2(TARGETS ${DEPLOY_ARGS_TARGET})
         if(QT_VERSION VERSION_GREATER_EQUAL "6.3")
-            set(__deploy_script)
+            set(__deploy_script "")
             if(${__is_quick_app})
                 qt_generate_deploy_qml_app_script(
                     TARGET ${DEPLOY_ARGS_TARGET}
@@ -1434,6 +1494,9 @@ endfunction()
 
 function(query_qt_paths)
     cmake_parse_arguments(QT_ARGS "" "SDK_DIR;BIN_DIR;DOC_DIR;INCLUDE_DIR;LIB_DIR;PLUGINS_DIR;QML_DIR;TRANSLATIONS_DIR" "" ${ARGN})
+    if(QT_ARGS_UNPARSED_ARGUMENTS)
+        message(AUTHOR_WARNING "query_qt_paths: Unrecognized arguments: ${QT_ARGS_UNPARSED_ARGUMENTS}")
+    endif()
     find_package(QT NAMES Qt6 Qt5 QUIET COMPONENTS Core)
     find_package(Qt${QT_VERSION_MAJOR} QUIET COMPONENTS Core)
     if(NOT (Qt6_FOUND OR Qt5_FOUND))
@@ -1473,6 +1536,9 @@ endfunction()
 
 function(query_qt_library_info)
     cmake_parse_arguments(QT_ARGS "" "STATIC;SHARED;VERSION" "" ${ARGN})
+    if(QT_ARGS_UNPARSED_ARGUMENTS)
+        message(AUTHOR_WARNING "query_qt_library_info: Unrecognized arguments: ${QT_ARGS_UNPARSED_ARGUMENTS}")
+    endif()
     find_package(QT NAMES Qt6 Qt5 QUIET COMPONENTS Core)
     find_package(Qt${QT_VERSION_MAJOR} QUIET COMPONENTS Core)
     if(NOT (Qt6_FOUND OR Qt5_FOUND))
@@ -1506,6 +1572,9 @@ function(dump_target_info)
     if(NOT arg_TARGETS)
         message(AUTHOR_WARNING "dump_target_info: you have to specify at least one target!")
         return()
+    endif()
+    if(arg_UNPARSED_ARGUMENTS)
+        message(AUTHOR_WARNING "dump_target_info: Unrecognized arguments: ${arg_UNPARSED_ARGUMENTS}")
     endif()
     foreach(__target ${arg_TARGETS})
         if(NOT TARGET ${__target})
