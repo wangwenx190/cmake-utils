@@ -935,10 +935,10 @@ endfunction()
 
 function(setup_package_export)
     cmake_parse_arguments(PKG_ARGS ""
-        "TARGET;NAMESPACE;PACKAGE_NAME;INCLUDE_DIR"
-        "PUBLIC_HEADERS;PRIVATE_HEADERS;ALIAS_HEADERS" ${ARGN})
-    if(NOT PKG_ARGS_TARGET)
-        message(AUTHOR_WARNING "setup_package_export: You need to specify a target for this function!")
+        "NAMESPACE;PACKAGE_NAME;INCLUDE_DIR;COMPONENT"
+        "TARGETS;PUBLIC_HEADERS;PRIVATE_HEADERS;ALIAS_HEADERS" ${ARGN})
+    if(NOT PKG_ARGS_TARGETS)
+        message(AUTHOR_WARNING "setup_package_export: You need to specify at least one target for this function!")
         return()
     endif()
     if(NOT PKG_ARGS_NAMESPACE)
@@ -975,10 +975,10 @@ function(setup_package_export)
     endif()
     set(__inc_priv_dir "${__inc_dir}/private")
     list(APPEND __inc_dir_list "${__inc_priv_dir}")
-    set(__export_name "${PKG_ARGS_PACKAGE_NAME}${PKG_ARGS_TARGET}Targets")
+    set(__export_name "${PKG_ARGS_PACKAGE_NAME}${PKG_ARGS_COMPONENT}Targets")
     set(__export_file "${__export_name}.cmake")
     install(
-        TARGETS ${PKG_ARGS_TARGET}
+        TARGETS ${PKG_ARGS_TARGETS}
         EXPORT ${__export_name}
         PUBLIC_HEADER DESTINATION "${__inc_dir}"
         PRIVATE_HEADER DESTINATION "${__inc_priv_dir}"
