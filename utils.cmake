@@ -935,7 +935,7 @@ endfunction()
 
 function(setup_package_export)
     cmake_parse_arguments(PKG_ARGS ""
-        "NAMESPACE;PACKAGE_NAME;INCLUDE_DIR;COMPONENT"
+        "NAMESPACE;PACKAGE_NAME;COMPONENT"
         "TARGETS;PUBLIC_HEADERS;PRIVATE_HEADERS;ALIAS_HEADERS" ${ARGN})
     if(NOT PKG_ARGS_TARGETS)
         message(AUTHOR_WARNING "setup_package_export: You need to specify at least one target for this function!")
@@ -969,12 +969,13 @@ function(setup_package_export)
     endif()
     set(__inc_dir "${CMAKE_INSTALL_INCLUDEDIR}/${PKG_ARGS_PACKAGE_NAME}")
     set(__inc_dir_list "${CMAKE_INSTALL_INCLUDEDIR}" "${__inc_dir}")
-    if(PKG_ARGS_INCLUDE_DIR)
-        set(__inc_dir "${__inc_dir}/${PKG_ARGS_INCLUDE_DIR}")
+    if(PKG_ARGS_COMPONENT)
+        set(__inc_dir "${__inc_dir}/${PKG_ARGS_COMPONENT}")
         list(APPEND __inc_dir_list "${__inc_dir}")
     endif()
     set(__inc_priv_dir "${__inc_dir}/private")
     list(APPEND __inc_dir_list "${__inc_priv_dir}")
+    # If "PKG_ARGS_COMPONENT" is not defined, it's OK, it will be treated as an empty string.
     set(__export_name "${PKG_ARGS_PACKAGE_NAME}${PKG_ARGS_COMPONENT}Targets")
     set(__export_file "${__export_name}.cmake")
     install(
