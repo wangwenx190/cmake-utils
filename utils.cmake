@@ -923,7 +923,7 @@ endfunction()
 
 function(setup_package_export)
     cmake_parse_arguments(PKG_ARGS ""
-        "TARGET;NAMESPACE;PACKAGE_NAME"
+        "TARGET;NAMESPACE;PACKAGE_NAME;INCLUDE_DIR"
         "PUBLIC_HEADERS;PRIVATE_HEADERS;ALIAS_HEADERS" ${ARGN})
     if(NOT PKG_ARGS_TARGET)
         message(AUTHOR_WARNING "setup_package_export: You need to specify a target for this function!")
@@ -946,10 +946,23 @@ function(setup_package_export)
     endif()
     include(GNUInstallDirs)
     set(__lib_dir "${CMAKE_INSTALL_LIBDIR}${__dir_suffix}")
-    set(__inc_dir "${CMAKE_INSTALL_INCLUDEDIR}")
-    set(__export_name "${PKG_ARGS_TARGET}Targets")
+    set(__inc_dir "${CMAKE_INSTALL_INCLUDEDIR}/${PKG_ARGS_PACKAGE_NAME}")
+    set(__inc_dir_list "${CMAKE_INSTALL_INCLUDEDIR}" "${__inc_dir}")
+    if(PKG_ARGS_INCLUDE_DIR)
+        set(__inc_dir "${__inc_dir}/${PKG_ARGS_INCLUDE_DIR}")
+        list(APPEND __inc_dir_list "${__inc_dir}")
+    endif()
+    set(__inc_priv_dir "${__inc_dir}/private")
+    list(APPEND __inc_dir_list "${__inc_priv_dir}")
+    set(__export_name "${PKG_ARGS_PACKAGE_NAME}${PKG_ARGS_TARGET}Targets")
     set(__export_file "${__export_name}.cmake")
-    install(TARGETS ${PKG_ARGS_TARGET} EXPORT ${__export_name})
+    install(
+        TARGETS ${PKG_ARGS_TARGET}
+        EXPORT ${__export_name}
+        PUBLIC_HEADER DESTINATION "${__inc_dir}"
+        PRIVATE_HEADER DESTINATION "${__inc_priv_dir}"
+        INCLUDES DESTINATION ${__inc_dir_list}
+    )
     export(EXPORT ${__export_name}
         FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/${__export_file}"
         NAMESPACE ${PKG_ARGS_NAMESPACE}::
@@ -958,7 +971,7 @@ function(setup_package_export)
         install(FILES ${PKG_ARGS_PUBLIC_HEADERS} DESTINATION "${__inc_dir}")
     endif()
     if(PKG_ARGS_PRIVATE_HEADERS)
-        install(FILES ${PKG_ARGS_PRIVATE_HEADERS} DESTINATION "${__inc_dir}/private")
+        install(FILES ${PKG_ARGS_PRIVATE_HEADERS} DESTINATION "${__inc_priv_dir}")
     endif()
     if(PKG_ARGS_ALIAS_HEADERS)
         install(FILES ${PKG_ARGS_ALIAS_HEADERS} DESTINATION "${__inc_dir}")
