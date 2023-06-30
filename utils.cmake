@@ -893,28 +893,37 @@ function(prepare_package_export)
     endif()
     include(CMakePackageConfigHelpers)
     include(GNUInstallDirs)
+    set(__dir_suffix "")
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(__dir_suffix "64")
+    endif()
+    set(__lib_dir "${CMAKE_INSTALL_LIBDIR}${__dir_suffix}")
+    set(__config_name "${PKG_ARGS_PACKAGE_NAME}Config")
+    set(__config_file "${__config_name}.cmake")
+    set(__version_name "${__config_name}Version")
+    set(__versoin_file "${__version_name}.cmake")
     write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/${PKG_ARGS_PACKAGE_NAME}ConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${__versoin_file}"
         VERSION ${PKG_ARGS_PACKAGE_VERSION}
         COMPATIBILITY AnyNewerVersion
     )
-    configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/${PKG_ARGS_PACKAGE_NAME}Config.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/${PKG_ARGS_PACKAGE_NAME}Config.cmake"
-        INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PKG_ARGS_PACKAGE_NAME}"
+    configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/${__config_file}.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/${__config_file}"
+        INSTALL_DESTINATION "${__lib_dir}/cmake/${PKG_ARGS_PACKAGE_NAME}"
         NO_CHECK_REQUIRED_COMPONENTS_MACRO
     )
     if(NOT PKG_ARGS_NO_INSTALL)
         install(FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/${PKG_ARGS_PACKAGE_NAME}Config.cmake"
-            "${CMAKE_CURRENT_BINARY_DIR}/${PKG_ARGS_PACKAGE_NAME}ConfigVersion.cmake"
-            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PKG_ARGS_PACKAGE_NAME}"
+            "${CMAKE_CURRENT_BINARY_DIR}/${__config_file}"
+            "${CMAKE_CURRENT_BINARY_DIR}/${__versoin_file}"
+            DESTINATION "${__lib_dir}/cmake/${PKG_ARGS_PACKAGE_NAME}"
         )
     endif()
 endfunction()
 
 function(setup_package_export)
     cmake_parse_arguments(PKG_ARGS ""
-        "TARGET;BIN_PATH;LIB_PATH;INCLUDE_PATH;NAMESPACE;PACKAGE_NAME"
+        "TARGET;NAMESPACE;PACKAGE_NAME"
         "PUBLIC_HEADERS;PRIVATE_HEADERS;ALIAS_HEADERS" ${ARGN})
     if(NOT PKG_ARGS_TARGET)
         message(AUTHOR_WARNING "setup_package_export: You need to specify a target for this function!")
@@ -931,28 +940,18 @@ function(setup_package_export)
     if(PKG_ARGS_UNPARSED_ARGUMENTS)
         message(AUTHOR_WARNING "setup_package_export: Unrecognized arguments: ${PKG_ARGS_UNPARSED_ARGUMENTS}")
     endif()
+    set(__dir_suffix "")
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(__dir_suffix "64")
+    endif()
     include(GNUInstallDirs)
-    set(__bin_dir "${CMAKE_INSTALL_BINDIR}")
-    if(PKG_ARGS_BIN_PATH)
-        set(__bin_dir "${__bin_dir}/${PKG_ARGS_BIN_PATH}")
-    endif()
-    set(__lib_dir "${CMAKE_INSTALL_LIBDIR}")
-    if(PKG_ARGS_LIB_PATH)
-        set(__lib_dir "${__lib_dir}/${PKG_ARGS_LIB_PATH}")
-    endif()
+    set(__lib_dir "${CMAKE_INSTALL_LIBDIR}${__dir_suffix}")
     set(__inc_dir "${CMAKE_INSTALL_INCLUDEDIR}")
-    if(PKG_ARGS_INCLUDE_PATH)
-        set(__inc_dir "${__inc_dir}/${PKG_ARGS_INCLUDE_PATH}")
-    endif()
-    install(TARGETS ${PKG_ARGS_TARGET}
-        EXPORT ${PKG_ARGS_TARGET}Targets
-        RUNTIME  DESTINATION "${__bin_dir}"
-        LIBRARY  DESTINATION "${__lib_dir}"
-        ARCHIVE  DESTINATION "${__lib_dir}"
-        INCLUDES DESTINATION "${__inc_dir}"
-    )
-    export(EXPORT ${PKG_ARGS_TARGET}Targets
-        FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/${PKG_ARGS_TARGET}Targets.cmake"
+    set(__export_name "${PKG_ARGS_TARGET}Targets")
+    set(__export_file "${__export_name}.cmake")
+    install(TARGETS ${PKG_ARGS_TARGET} EXPORT ${__export_name})
+    export(EXPORT ${__export_name}
+        FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/${__export_file}"
         NAMESPACE ${PKG_ARGS_NAMESPACE}::
     )
     if(PKG_ARGS_PUBLIC_HEADERS)
@@ -964,8 +963,8 @@ function(setup_package_export)
     if(PKG_ARGS_ALIAS_HEADERS)
         install(FILES ${PKG_ARGS_ALIAS_HEADERS} DESTINATION "${__inc_dir}")
     endif()
-    install(EXPORT ${PKG_ARGS_TARGET}Targets
-        FILE ${PKG_ARGS_TARGET}Targets.cmake
+    install(EXPORT ${__export_name}
+        FILE ${__export_file}
         NAMESPACE ${PKG_ARGS_NAMESPACE}::
         DESTINATION "${__lib_dir}/cmake/${PKG_ARGS_PACKAGE_NAME}"
     )
