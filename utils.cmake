@@ -435,6 +435,23 @@ function(setup_project)
             endif()
         endif()
     endforeach()
+    if(MSVC)
+        foreach(__type IN LISTS EXE SHARED)
+            set(__flag_name "CMAKE_${__type}_LINKER_FLAGS")
+            if(NOT ("x${${__flag_name}}" STREQUAL "x"))
+                string(REGEX REPLACE "[-|/]INCREMENTAL(:NO)? " " " ${__flag_name} ${${__flag_name}})
+            endif()
+            foreach(__config IN LISTS DEBUG MINSIZEREL RELEASE RELWITHDEBINFO)
+                set(__flag_name_config "${__flag_name}_${__config}")
+                if(NOT ("x${${__flag_name_config}}" STREQUAL "x"))
+                    string(REGEX REPLACE "[-|/]INCREMENTAL(:NO)? " " " ${__flag_name_config} ${${__flag_name_config}})
+                endif()
+            endforeach()
+            # We don't want incremental build in any configuration.
+            string(APPEND ${__flag_name} " /INCREMENTAL:NO ")
+            set(${__flag_name} "${${__flag_name}}" PARENT_SCOPE)
+        endforeach()
+    endif()
 endfunction()
 
 function(get_commit_hash)
@@ -477,6 +494,10 @@ function(setup_qt_stuff)
         message(AUTHOR_WARNING "setup_qt_stuff: Unrecognized arguments: ${QT_ARGS_UNPARSED_ARGUMENTS}")
     endif()
     foreach(__target ${QT_ARGS_TARGETS})
+        if(NOT TARGET ${__target})
+            message(AUTHOR_WARNING "${__target} is not a valid CMake target!")
+            continue()
+        endif()
         target_compile_definitions(${__target} PRIVATE
             QT_NO_CAST_TO_ASCII
             QT_NO_CAST_FROM_ASCII
@@ -528,6 +549,10 @@ function(setup_compile_params)
         message(AUTHOR_WARNING "setup_compile_params: Unrecognized arguments: ${COM_ARGS_UNPARSED_ARGUMENTS}")
     endif()
     foreach(__target ${COM_ARGS_TARGETS})
+        if(NOT TARGET ${__target})
+            message(AUTHOR_WARNING "${__target} is not a valid CMake target!")
+            continue()
+        endif()
         set(__target_type "UNKNOWN")
         get_target_property(__target_type ${__target} TYPE)
         if((__target_type STREQUAL "STATIC_LIBRARY") AND (NOT COM_ARGS_FORCE_LTO))
@@ -856,6 +881,10 @@ function(setup_gui_app)
         message(AUTHOR_WARNING "setup_gui_app: Unrecognized arguments: ${GUI_ARGS_UNPARSED_ARGUMENTS}")
     endif()
     foreach(__target ${GUI_ARGS_TARGETS})
+        if(NOT TARGET ${__target})
+            message(AUTHOR_WARNING "${__target} is not a valid CMake target!")
+            continue()
+        endif()
         set_target_properties(${__target} PROPERTIES
             WIN32_EXECUTABLE TRUE
             MACOSX_BUNDLE TRUE
@@ -945,7 +974,16 @@ function(setup_package_export)
         set(__dir_suffix "64")
     endif()
     include(GNUInstallDirs)
+    set(__bin_dir "${CMAKE_INSTALL_BINDIR}${__dir_suffix}")
     set(__lib_dir "${CMAKE_INSTALL_LIBDIR}${__dir_suffix}")
+    set(__ar_dir "${CMAKE_INSTALL_LIBDIR}${__dir_suffix}")
+    set(__cmake_dir "${__lib_dir}/cmake")
+    if((NOT DEFINED CMAKE_BUILD_TYPE OR "x${CMAKE_BUILD_TYPE}" STREQUAL "x") AND NOT "x${CMAKE_CONFIGURATION_TYPES}" STREQUAL "x")
+        set(__subdir "/$<LOWER_CASE:$<CONFIG>>")
+        string(APPEND __bin_dir "${__subdir}")
+        string(APPEND __lib_dir "${__subdir}")
+        string(APPEND __ar_dir "${__subdir}")
+    endif()
     set(__inc_dir "${CMAKE_INSTALL_INCLUDEDIR}/${PKG_ARGS_PACKAGE_NAME}")
     set(__inc_dir_list "${CMAKE_INSTALL_INCLUDEDIR}" "${__inc_dir}")
     if(PKG_ARGS_INCLUDE_DIR)
@@ -962,6 +1000,10 @@ function(setup_package_export)
         PUBLIC_HEADER DESTINATION "${__inc_dir}"
         PRIVATE_HEADER DESTINATION "${__inc_priv_dir}"
         INCLUDES DESTINATION ${__inc_dir_list}
+        BUNDLE DESTINATION .
+        RUNTIME DESTINATION "${__bin_dir}"
+        LIBRARY DESTINATION "${__lib_dir}"
+        ARCHIVE DESTINATION "${__ar_dir}"
     )
     export(EXPORT ${__export_name}
         FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/${__export_file}"
@@ -979,7 +1021,7 @@ function(setup_package_export)
     install(EXPORT ${__export_name}
         FILE ${__export_file}
         NAMESPACE ${PKG_ARGS_NAMESPACE}::
-        DESTINATION "${__lib_dir}/cmake/${PKG_ARGS_PACKAGE_NAME}"
+        DESTINATION "${__cmake_dir}/${PKG_ARGS_PACKAGE_NAME}"
     )
 endfunction()
 
@@ -1000,25 +1042,18 @@ function(install2)
     set(__bin_dir "${CMAKE_INSTALL_BINDIR}${__dir_suffix}")
     set(__lib_dir "${CMAKE_INSTALL_LIBDIR}${__dir_suffix}")
     set(__ar_dir "${CMAKE_INSTALL_LIBDIR}${__dir_suffix}")
-    if(DEFINED CMAKE_BUILD_TYPE AND NOT "x${CMAKE_BUILD_TYPE}" STREQUAL "x")
-        install(TARGETS ${arg_TARGETS}
-            BUNDLE  DESTINATION .
-            RUNTIME DESTINATION "${__bin_dir}"
-            LIBRARY DESTINATION "${__lib_dir}"
-            ARCHIVE DESTINATION "${__ar_dir}"
-        )
-    elseif(DEFINED CMAKE_CONFIGURATION_TYPES AND NOT "x${CMAKE_CONFIGURATION_TYPES}" STREQUAL "x")
-        foreach(__type ${CMAKE_CONFIGURATION_TYPES})
-            string(TOLOWER ${__type} __type_lower)
-            install(TARGETS ${arg_TARGETS}
-                CONFIGURATIONS ${__type}
-                BUNDLE  DESTINATION . # FIXME: how about macOS bundles?
-                RUNTIME DESTINATION "${__bin_dir}/${__type_lower}"
-                LIBRARY DESTINATION "${__lib_dir}/${__type_lower}"
-                ARCHIVE DESTINATION "${__ar_dir}/${__type_lower}"
-            )
-        endforeach()
+    if((NOT DEFINED CMAKE_BUILD_TYPE OR "x${CMAKE_BUILD_TYPE}" STREQUAL "x") AND NOT "x${CMAKE_CONFIGURATION_TYPES}" STREQUAL "x")
+        set(__subdir "/$<LOWER_CASE:$<CONFIG>>")
+        string(APPEND __bin_dir "${__subdir}")
+        string(APPEND __lib_dir "${__subdir}")
+        string(APPEND __ar_dir "${__subdir}")
     endif()
+    install(TARGETS ${arg_TARGETS}
+        BUNDLE  DESTINATION .
+        RUNTIME DESTINATION "${__bin_dir}"
+        LIBRARY DESTINATION "${__lib_dir}"
+        ARCHIVE DESTINATION "${__ar_dir}"
+    )
 endfunction()
 
 function(deploy_qt_runtime)
