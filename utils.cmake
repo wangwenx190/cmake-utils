@@ -575,14 +575,14 @@ function(setup_compile_params)
             )
             if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
                 target_compile_options(${__target} PRIVATE
-                    /bigobj /utf-8 $<$<NOT:$<CONFIG:Debug>>:/fp:fast /GT /Gw /Gy /Zc:inline>
+                    /bigobj /utf-8 $<$<CONFIG:Release>:/fp:fast /GT /Gw /Gy /Zc:inline>
                 )
                 target_link_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:/OPT:REF /OPT:ICF /OPT:LBR>
+                    $<$<CONFIG:Release>:/OPT:REF /OPT:ICF /OPT:LBR>
                     /DYNAMICBASE /FIXED:NO /NXCOMPAT /LARGEADDRESSAWARE /WX
                 )
                 if(__target_type STREQUAL "EXECUTABLE")
-                    target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/GA>)
+                    target_compile_options(${__target} PRIVATE $<$<CONFIG:Release>:/GA>)
                     target_link_options(${__target} PRIVATE /TSAWARE)
                 endif()
                 #if(CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -607,7 +607,7 @@ function(setup_compile_params)
                     target_compile_options(${__target} PRIVATE $<$<CONFIG:Debug,RelWithDebInfo>:/ZH:SHA_256>)
                 endif()
                 if(MSVC_VERSION GREATER_EQUAL 1925) # Visual Studio 2019 version 16.5
-                    target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/QIntel-jcc-erratum>)
+                    target_compile_options(${__target} PRIVATE $<$<CONFIG:Release>:/QIntel-jcc-erratum>)
                 endif()
                 if(MSVC_VERSION GREATER_EQUAL 1929) # Visual Studio 2019 version 16.10
                     target_compile_options(${__target} PRIVATE /await:strict)
@@ -618,12 +618,12 @@ function(setup_compile_params)
                     target_compile_options(${__target} PRIVATE /options:strict)
                 endif()
                 if(COM_ARGS_CFGUARD)
-                    target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:cf>)
-                    target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/GUARD:CF>)
+                    target_compile_options(${__target} PRIVATE $<$<CONFIG:Release>:/guard:cf>)
+                    target_link_options(${__target} PRIVATE $<$<CONFIG:Release>:/GUARD:CF>)
                 endif()
                 if(COM_ARGS_INTELCET)
                     if(MSVC_VERSION GREATER_EQUAL 1920) # Visual Studio 2019 version 16.0
-                        target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/CETCOMPAT>)
+                        target_link_options(${__target} PRIVATE $<$<CONFIG:Release>:/CETCOMPAT>)
                     endif()
                 endif()
                 if(COM_ARGS_SPECTRE)
@@ -635,8 +635,8 @@ function(setup_compile_params)
                 endif()
                 if(COM_ARGS_EHCONTGUARD)
                     if((MSVC_VERSION GREATER_EQUAL 1927) AND (CMAKE_SIZEOF_VOID_P EQUAL 8)) # Visual Studio 2019 version 16.7
-                        target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:ehcont>)
-                        target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:ehcont>)
+                        target_compile_options(${__target} PRIVATE $<$<CONFIG:Release>:/guard:ehcont>)
+                        target_link_options(${__target} PRIVATE $<$<CONFIG:Release>:/guard:ehcont>)
                     endif()
                 endif()
                 if(COM_ARGS_PERMISSIVE)
@@ -692,49 +692,48 @@ function(setup_compile_params)
         else()
             target_compile_options(${__target} PRIVATE
                 -fthreadsafe-statics
-                $<$<NOT:$<CONFIG:Debug>>:-ffp-contract=fast -fomit-frame-pointer -ffunction-sections -fdata-sections -funroll-all-loops>
+                $<$<CONFIG:Release>:-ffp-contract=fast -fomit-frame-pointer -ffunction-sections -fdata-sections -funroll-all-loops>
             )
             if(APPLE)
                 target_link_options(${__target} PRIVATE
                     -Wl,-fatal_warnings -Wl,-undefined,error
-                    $<$<NOT:$<CONFIG:Debug>>:-Wl,-dead_strip -Wl,-no_data_in_code_info -Wl,-no_function_starts>
+                    $<$<CONFIG:Release>:-Wl,-dead_strip -Wl,-no_data_in_code_info -Wl,-no_function_starts>
                 )
             else()
                 target_link_options(${__target} PRIVATE
                     -Wl,--fatal-warnings -Wl,--build-id=sha1 -Wl,--no-undefined -Wl,--as-needed -Wl,-z,defs
-                    $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections -Wl,-O3 -Wl,--no-keep-memory -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack>
-                    $<$<CONFIG:Release>:-Wl,--strip-all>
+                    $<$<CONFIG:Release>:-Wl,--strip-all -Wl,--gc-sections -Wl,-O3 -Wl,--no-keep-memory -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack>
                 )
             endif()
             if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
                 target_compile_options(${__target} PRIVATE
                     -pipe # Use pipes for communicating between sub-processes. Faster. Have no effect for Clang.
-                    $<$<NOT:$<CONFIG:Debug>>:-Wa,-mbranches-within-32B-boundaries>
+                    $<$<CONFIG:Release>:-Wa,-mbranches-within-32B-boundaries>
                 )
             endif()
             if(COM_ARGS_INTELCET)
                 target_compile_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:-mshstk>
+                    $<$<CONFIG:Release>:-mshstk>
                 )
             endif()
             if(COM_ARGS_CFGUARD)
                 if(MINGW)
                     target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-mguard=cf>
+                        $<$<CONFIG:Release>:-mguard=cf>
                     )
                     target_link_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-mguard=cf>
+                        $<$<CONFIG:Release>:-mguard=cf>
                     )
                 elseif(APPLE OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
                     target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-fcf-protection=full>
+                        $<$<CONFIG:Release>:-fcf-protection=full>
                     )
                 endif()
             endif()
             if(COM_ARGS_SPECTRE)
                 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
                     #[[target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:
+                        $<$<CONFIG:Release>:
                             # These parameters are not compatible with -fcf-protection=full
                             -mindirect-branch=thunk
                             -mfunction-return=thunk
@@ -757,23 +756,23 @@ function(setup_compile_params)
             endif()
             if(__lto_enabled)
                 target_compile_options(${__target} PRIVATE
-                    $<$<NOT:$<CONFIG:Debug>>:-fsplit-lto-unit -fwhole-program-vtables>
+                    $<$<CONFIG:Release>:-fsplit-lto-unit -fwhole-program-vtables>
                 )
                 if(MSVC)
                     target_link_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:/OPT:lldltojobs=all /OPT:lldlto=3> # /lldltocachepolicy:cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
+                        $<$<CONFIG:Release>:/OPT:lldltojobs=all /OPT:lldlto=3> # /lldltocachepolicy:cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
                     )
                 else()
                     target_link_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-fwhole-program-vtables -Wl,--thinlto-jobs=all -Wl,--lto-O3> # -Wl,--thinlto-cache-policy=cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
+                        $<$<CONFIG:Release>:-fwhole-program-vtables -Wl,--thinlto-jobs=all -Wl,--lto-O3> # -Wl,--thinlto-cache-policy=cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
                     )
                 endif()
             endif()
             #[[target_compile_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:-fsanitize=shadow-call-stack -fno-stack-protector>
+                $<$<CONFIG:Release>:-fsanitize=shadow-call-stack -fno-stack-protector>
             )
             target_link_options(${__target} PRIVATE
-                $<$<NOT:$<CONFIG:Debug>>:-fsanitize=shadow-call-stack -fno-stack-protector>
+                $<$<CONFIG:Release>:-fsanitize=shadow-call-stack -fno-stack-protector>
             )]]
             target_compile_options(${__target} PRIVATE
                 -fcolor-diagnostics
@@ -800,51 +799,51 @@ function(setup_compile_params)
                     /Zc:dllexportInlines- # Do not export inline member functions. This is similar to "-fvisibility-inlines-hidden".
                     /Zc:char8_t /Zc:sizedDealloc /Zc:strictStrings /Zc:threadSafeInit /Zc:trigraphs /Zc:twoPhase
                     /clang:-mcx16 # Needed by _InterlockedCompareExchange128() from CPP/WinRT.
-                    $<$<NOT:$<CONFIG:Debug>>:/clang:-mbranches-within-32B-boundaries /clang:-ffp-contract=fast /Gw /Gy /Zc:inline>
+                    $<$<CONFIG:Release>:/clang:-mbranches-within-32B-boundaries /clang:-ffp-contract=fast /Gw /Gy /Zc:inline>
                 )
                 target_link_options(${__target} PRIVATE
                     --color-diagnostics
                     /DYNAMICBASE /FIXED:NO /NXCOMPAT /LARGEADDRESSAWARE
-                    $<$<NOT:$<CONFIG:Debug>>:/OPT:REF /OPT:ICF /OPT:LBR /OPT:lldtailmerge>
+                    $<$<CONFIG:Release>:/OPT:REF /OPT:ICF /OPT:LBR /OPT:lldtailmerge>
                 )
                 if(__target_type STREQUAL "EXECUTABLE")
-                    target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/GA>)
+                    target_compile_options(${__target} PRIVATE $<$<CONFIG:Release>:/GA>)
                     target_link_options(${__target} PRIVATE /TSAWARE)
                 endif()
                 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
                     target_link_options(${__target} PRIVATE /HIGHENTROPYVA)
                 endif()
                 if(COM_ARGS_CFGUARD)
-                    target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:cf>)
-                    target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/GUARD:CF>)
+                    target_compile_options(${__target} PRIVATE $<$<CONFIG:Release>:/guard:cf>)
+                    target_link_options(${__target} PRIVATE $<$<CONFIG:Release>:/GUARD:CF>)
                 endif()
                 if(COM_ARGS_INTELCET)
-                    target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/CETCOMPAT>)
+                    target_link_options(${__target} PRIVATE $<$<CONFIG:Release>:/CETCOMPAT>)
                 endif()
                 if(COM_ARGS_EHCONTGUARD)
                     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-                        target_compile_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:ehcont>)
-                        target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/guard:ehcont>)
+                        target_compile_options(${__target} PRIVATE $<$<CONFIG:Release>:/guard:ehcont>)
+                        target_link_options(${__target} PRIVATE $<$<CONFIG:Release>:/guard:ehcont>)
                     endif()
                 endif()
             else()
-                target_link_options(${__target} PRIVATE -fuse-ld=lld -Wl,--color-diagnostics $<$<NOT:$<CONFIG:Debug>>:-Wl,--icf=all>)
+                target_link_options(${__target} PRIVATE -fuse-ld=lld -Wl,--color-diagnostics $<$<CONFIG:Release>:-Wl,--icf=all>)
                 if(APPLE)
                     # TODO: -fobjc-arc, -fobjc-arc-exceptions (http://clang.llvm.org/docs/AutomaticReferenceCounting.html)
                     target_compile_options(${__target} PRIVATE -fobjc-call-cxx-cdtors)
-                    target_link_options(${__target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:-Wl,--strict-auto-link>)
+                    target_link_options(${__target} PRIVATE $<$<CONFIG:Release>:-Wl,--strict-auto-link>)
                 else()
                     target_link_options(${__target} PRIVATE -Wl,-z,keep-text-section-prefix)
                 endif()
                 if(COM_ARGS_SPECTRE)
                     target_compile_options(${__target} PRIVATE
-                        $<$<NOT:$<CONFIG:Debug>>:-mretpoline -mspeculative-load-hardening>
+                        $<$<CONFIG:Release>:-mretpoline -mspeculative-load-hardening>
                     )
                 endif()
                 if(COM_ARGS_CFGUARD)
                     if(NOT APPLE)
                         target_compile_options(${__target} PRIVATE
-                            $<$<NOT:$<CONFIG:Debug>>:-fsanitize=cfi -fsanitize-cfi-cross-dso>
+                            $<$<CONFIG:Release>:-fsanitize=cfi -fsanitize-cfi-cross-dso>
                         )
                     endif()
                 endif()
@@ -1134,7 +1133,7 @@ function(deploy_qt_runtime)
         )
         set(__full_deploy_params
             $<$<CONFIG:Debug>:--debug> # Sometimes windeployqt can't determine the build type, we tell it explicitly.
-            $<$<CONFIG:MinSizeRel,Release,RelWithDebInfo>:--release> # Same as above.
+            $<$<NOT:$<CONFIG:Debug>>:--release> # Same as above.
             --libdir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>" # Explicitly set the library deploy path (where to copy Qt6XXX.dll) because if may be affected by other parameters we use.
             #--no-translations # It's better to ship Qt translations altogether, otherwise the strings from Qt will stay English.
             #--no-system-d3d-compiler # QtGui will need d3dcompiler_XX.dll. If we don't ship them, you'll have to make sure the target machine has these libraries.
