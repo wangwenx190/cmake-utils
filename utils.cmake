@@ -491,6 +491,8 @@ function(setup_qt_stuff)
             QT_NO_JAVA_STYLE_ITERATORS
             QT_NO_AS_CONST
             QT_NO_QEXCHANGE
+            QT_NO_USING_NAMESPACE
+            QT_NO_CONTEXTLESS_CONNECT
             QT_EXPLICIT_QFILE_CONSTRUCTION_FROM_PATH
             #QT_TYPESAFE_FLAGS # QtQuick private headers prevent us from enabling this flag.
             QT_USE_QSTRINGBUILDER
