@@ -1131,7 +1131,7 @@ function(deploy_qt_runtime)
         endif()
         set(__extra_deploy_params
             ${__extra_deploy_params}
-            --plugindir "${DEPLOY_ARGS_PLUGIN_DEPLOY_DIR}" # windeployqt by default will copy all plugins to the application root folder which is very bad.
+            --plugindir "${__plugins_dir}" # windeployqt by default will copy all plugins to the application root folder which is very bad.
         )
         set(__full_deploy_params
             $<$<CONFIG:Debug>:--debug> # Sometimes windeployqt can't determine the build type, we tell it explicitly.
