@@ -1185,7 +1185,7 @@ function(deploy_qt_runtime)
         COMMAND ${__full_deploy_command}
         WORKING_DIRECTORY "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>"
         COMMENT "Deploying Qt dependencies for target ${DEPLOY_ARGS_TARGET} ..."
-        VERBATIM
+        #VERBATIM # This parameter actually makes our command line unusable ...
     )
     # Normally CMake will do this for us automatically, but in case it doesn't ...
     add_dependencies(${__deploy_target} ${DEPLOY_ARGS_TARGET})
