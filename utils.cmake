@@ -1070,6 +1070,7 @@ function(deploy_qt_runtime)
         message(WARNING "deploy_qt_runtime: Can't locate the deployqt tool.")
         return()
     endif()
+    set(__bin_dir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>")
     set(__is_quick_app FALSE)
     set(__full_deploy_command "")
     if(WIN32)
@@ -1092,7 +1093,7 @@ function(deploy_qt_runtime)
             set(__quick_deploy_params
                 --qmldir "${DEPLOY_ARGS_QML_SOURCE_DIR}"
             )
-            set(__qml_dir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../qml")
+            set(__qml_dir "${__bin_dir}/../qml")
             if(DEPLOY_ARGS_QML_DEPLOY_DIR)
                 set(__qml_dir "${DEPLOY_ARGS_QML_DEPLOY_DIR}")
             endif()
@@ -1117,7 +1118,7 @@ function(deploy_qt_runtime)
         endif()
         set(__extra_deploy_params "")
         if(QT_VERSION VERSION_GREATER_EQUAL "6.5")
-            set(__translations_dir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../translations")
+            set(__translations_dir "${__bin_dir}/../translations")
             if(DEPLOY_ARGS_TRANSLATION_DEPLOY_DIR)
                 set(__translations_dir "${DEPLOY_ARGS_TRANSLATION_DEPLOY_DIR}")
             endif()
@@ -1125,7 +1126,7 @@ function(deploy_qt_runtime)
                 --translationdir "${__translations_dir}"
             )
         endif()
-        set(__plugins_dir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>/../plugins")
+        set(__plugins_dir "${__bin_dir}/../plugins")
         if(DEPLOY_ARGS_PLUGIN_DEPLOY_DIR)
             set(__plugins_dir "${DEPLOY_ARGS_PLUGIN_DEPLOY_DIR}")
         endif()
@@ -1136,7 +1137,7 @@ function(deploy_qt_runtime)
         set(__full_deploy_params
             $<$<CONFIG:Debug>:--debug> # Sometimes windeployqt can't determine the build type, we tell it explicitly.
             $<$<NOT:$<CONFIG:Debug>>:--release> # Same as above.
-            --libdir "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>" # Explicitly set the library deploy path (where to copy Qt6XXX.dll) because if may be affected by other parameters we use.
+            --libdir "${__bin_dir}" # Explicitly set the library deploy path (where to copy Qt6XXX.dll) because if may be affected by other parameters we use.
             #--no-translations # It's better to ship Qt translations altogether, otherwise the strings from Qt will stay English.
             #--no-system-d3d-compiler # QtGui will need d3dcompiler_XX.dll. If we don't ship them, you'll have to make sure the target machine has these libraries.
             #--no-compiler-runtime # The target machine may not installed the same MSVC runtime as the develop machine, so it's better to ship it as well.
@@ -1183,12 +1184,21 @@ function(deploy_qt_runtime)
     set(__deploy_target ${DEPLOY_ARGS_TARGET}_deployqt)
     add_custom_target(${__deploy_target}
         COMMAND ${__full_deploy_command}
-        WORKING_DIRECTORY "$<TARGET_FILE_DIR:${DEPLOY_ARGS_TARGET}>"
+        WORKING_DIRECTORY "${__bin_dir}"
         COMMENT "Deploying Qt dependencies for target ${DEPLOY_ARGS_TARGET} ..."
         #VERBATIM # This parameter actually makes our command line unusable ...
     )
     # Normally CMake will do this for us automatically, but in case it doesn't ...
     add_dependencies(${__deploy_target} ${DEPLOY_ARGS_TARGET})
+    set(__qt_conf "${__bin_dir}/qt.conf")
+    add_custom_command(TARGET ${__deploy_target} POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E echo "[Paths]" > "${__qt_conf}"
+        COMMAND "${CMAKE_COMMAND}" -E echo "Prefix=.." >> "${__qt_conf}"
+        #COMMAND "${CMAKE_COMMAND}" -E echo "Plugins=plugins" >> "${__qt_conf}"
+        #COMMAND "${CMAKE_COMMAND}" -E echo "Translations=translations" >> "${__qt_conf}"
+        #WORKING_DIRECTORY
+        COMMENT "Generating qt.conf ..."
+    )
     if(NOT DEPLOY_ARGS_NO_INSTALL)
         install2(TARGETS ${DEPLOY_ARGS_TARGET})
         if(QT_VERSION VERSION_GREATER_EQUAL "6.3")
