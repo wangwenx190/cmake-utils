@@ -1191,12 +1191,12 @@ function(deploy_qt_runtime)
     # Normally CMake will do this for us automatically, but in case it doesn't ...
     add_dependencies(${__deploy_target} ${DEPLOY_ARGS_TARGET})
     set(__qt_conf "${__bin_dir}/qt.conf")
+    # Without qt.conf, our application won't start, because we don't put plugins
+    # alongside with our main executable file. We need to explicitly tell Qt where
+    # to find them.
     add_custom_command(TARGET ${__deploy_target} POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E echo "[Paths]" > "${__qt_conf}"
         COMMAND "${CMAKE_COMMAND}" -E echo "Prefix=.." >> "${__qt_conf}"
-        #COMMAND "${CMAKE_COMMAND}" -E echo "Plugins=plugins" >> "${__qt_conf}"
-        #COMMAND "${CMAKE_COMMAND}" -E echo "Translations=translations" >> "${__qt_conf}"
-        #WORKING_DIRECTORY
         COMMENT "Generating qt.conf ..."
     )
     if(NOT DEPLOY_ARGS_NO_INSTALL)
