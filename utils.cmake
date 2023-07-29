@@ -848,11 +848,11 @@ function(setup_compile_params)
                 )
                 if(MSVC)
                     target_link_options(${__target} PRIVATE
-                        $<$<CONFIG:Release>:/OPT:lldltojobs=all /OPT:lldlto=3> # /lldltocachepolicy:cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
+                        $<$<CONFIG:Release>:/OPT:lldltojobs=all /OPT:lldlto=3 /OPT:lldltocgo=3> # /lldltocachepolicy:cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
                     )
                 else()
                     target_link_options(${__target} PRIVATE
-                        $<$<CONFIG:Release>:-fwhole-program-vtables -Wl,--thinlto-jobs=all -Wl,--lto-O3> # -Wl,--thinlto-cache-policy=cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
+                        $<$<CONFIG:Release>:-fwhole-program-vtables -Wl,--thinlto-jobs=all -Wl,--lto-O3 -Wl,--lto-CGO3> # -Wl,--thinlto-cache-policy=cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
                     )
                 endif()
             endif()
@@ -1038,8 +1038,10 @@ function(setup_package_export)
     set(__bin_dir "")
     set(__lib_dir "")
     set(__include_dir "")
+    set(__cmake_dir "")
     compute_install_dir(BIN_DIR __bin_dir LIB_DIR __lib_dir INCLUDE_DIR __include_dir)
-    set(__cmake_dir "${__lib_dir}/cmake")
+    compute_install_dir(ROOT LIB_DIR __cmake_dir)
+    string(APPEND __cmake_dir "/cmake")
     set(__inc_dir "${__include_dir}/${PKG_ARGS_PACKAGE_NAME}")
     set(__inc_dir_list "${__include_dir}" "${__inc_dir}")
     if(PKG_ARGS_COMPONENT)
