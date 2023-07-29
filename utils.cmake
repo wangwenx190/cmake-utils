@@ -990,8 +990,9 @@ function(prepare_package_export)
     if(PKG_ARGS_UNPARSED_ARGUMENTS)
         message(AUTHOR_WARNING "prepare_package_export: Unrecognized arguments: ${PKG_ARGS_UNPARSED_ARGUMENTS}")
     endif()
-    set(__lib_dir "")
-    compute_install_dir(LIB_DIR __lib_dir)
+    set(__cmake_dir "")
+    compute_install_dir(ROOT LIB_DIR __cmake_dir)
+    string(APPEND __cmake_dir "/cmake")
     set(__config_name "${PKG_ARGS_PACKAGE_NAME}Config")
     set(__config_file "${__config_name}.cmake")
     set(__version_name "${__config_name}Version")
@@ -1004,14 +1005,14 @@ function(prepare_package_export)
     )
     configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/${__config_file}.in"
         "${CMAKE_CURRENT_BINARY_DIR}/${__config_file}"
-        INSTALL_DESTINATION "${__lib_dir}/cmake/${PKG_ARGS_PACKAGE_NAME}"
+        INSTALL_DESTINATION "${__cmake_dir}/${PKG_ARGS_PACKAGE_NAME}"
         NO_CHECK_REQUIRED_COMPONENTS_MACRO
     )
     if(NOT PKG_ARGS_NO_INSTALL)
         install(FILES
             "${CMAKE_CURRENT_BINARY_DIR}/${__config_file}"
             "${CMAKE_CURRENT_BINARY_DIR}/${__versoin_file}"
-            DESTINATION "${__lib_dir}/cmake/${PKG_ARGS_PACKAGE_NAME}"
+            DESTINATION "${__cmake_dir}/${PKG_ARGS_PACKAGE_NAME}"
         )
     endif()
 endfunction()
