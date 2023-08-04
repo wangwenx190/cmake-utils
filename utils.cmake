@@ -236,20 +236,6 @@ function(setup_project)
             set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON PARENT_SCOPE)
         endif()
     endif()
-    if(NOT DEFINED CMAKE_DEBUG_POSTFIX)
-        if(WIN32)
-            if(NOT MINGW) # MinGW libraries usually don't have debug postfix.
-                set(CMAKE_DEBUG_POSTFIX "d" PARENT_SCOPE)
-            endif()
-        else()
-            set(CMAKE_DEBUG_POSTFIX "_debug" PARENT_SCOPE)
-        endif()
-    endif()
-    if(APPLE)
-        if(NOT DEFINED CMAKE_FRAMEWORK_MULTI_CONFIG_POSTFIX_DEBUG)
-            set(CMAKE_FRAMEWORK_MULTI_CONFIG_POSTFIX_DEBUG "_debug" PARENT_SCOPE)
-        endif()
-    endif()
     set(__is_multi_config FALSE)
     set(__bin_dir "")
     set(__lib_dir "")
@@ -281,6 +267,27 @@ function(setup_project)
                 set(${__ar_var} "${PROJECT_BINARY_DIR}/${__lib_dir}/${__type_lower}" PARENT_SCOPE)
             endif()
         endforeach()
+    endif()
+    if(NOT DEFINED CMAKE_DEBUG_POSTFIX)
+        if(WIN32)
+            if(MINGW)
+                # MinGW libraries usually don't have a debug postfix but we
+                # need to add one when using multi-config generators to avoid
+                # our libraries be overwritten by different configurations.
+                if(__is_multi_config)
+                    set(CMAKE_DEBUG_POSTFIX "d" PARENT_SCOPE)
+                endif()
+            else()
+                set(CMAKE_DEBUG_POSTFIX "d" PARENT_SCOPE)
+            endif()
+        else()
+            set(CMAKE_DEBUG_POSTFIX "_debug" PARENT_SCOPE)
+        endif()
+    endif()
+    if(APPLE)
+        if(NOT DEFINED CMAKE_FRAMEWORK_MULTI_CONFIG_POSTFIX_DEBUG)
+            set(CMAKE_FRAMEWORK_MULTI_CONFIG_POSTFIX_DEBUG "_debug" PARENT_SCOPE)
+        endif()
     endif()
     if(NOT DEFINED CMAKE_INCLUDE_CURRENT_DIR)
         set(CMAKE_INCLUDE_CURRENT_DIR ON PARENT_SCOPE)
@@ -659,7 +666,11 @@ function(setup_compile_params)
                     /bigobj /utf-8 $<$<CONFIG:Release>:/fp:fast /GT /Gw /Gy /Zc:inline>
                 )
                 target_link_options(${__target} PRIVATE
-                    $<$<CONFIG:Release>:/OPT:REF /OPT:ICF /OPT:LBR>
+                    # We want to get the PDB files so we add the "/DEBUG" parameter here,
+                    # however, MSVC will disable some optimizations if it found this flag,
+                    # but we can override this behavior by explicitly adding the flags which
+                    # enable the optimizations.
+                    $<$<CONFIG:Release>:/DEBUG /OPT:REF /OPT:ICF /OPT:LBR>
                     /DYNAMICBASE /FIXED:NO /NXCOMPAT /LARGEADDRESSAWARE /WX
                 )
                 if(__target_type STREQUAL "EXECUTABLE")
@@ -891,8 +902,8 @@ function(setup_compile_params)
                 )
                 target_link_options(${__target} PRIVATE
                     --color-diagnostics
+                    $<$<CONFIG:Release>:/DEBUG /OPT:REF /OPT:ICF /OPT:LBR /OPT:lldtailmerge>
                     /DYNAMICBASE /FIXED:NO /NXCOMPAT /LARGEADDRESSAWARE
-                    $<$<CONFIG:Release>:/OPT:REF /OPT:ICF /OPT:LBR /OPT:lldtailmerge>
                 )
                 if(__target_type STREQUAL "EXECUTABLE")
                     target_compile_options(${__target} PRIVATE $<$<CONFIG:Release>:/GA>)
@@ -942,6 +953,8 @@ endfunction()
 
 function(setup_gui_app)
     # TODO: macOS bundle icon
+    # TODO: Info.plist
+    # TODO: sign
     cmake_parse_arguments(GUI_ARGS "" "BUNDLE_ID;BUNDLE_VERSION;BUNDLE_VERSION_SHORT" "TARGETS" ${ARGN})
     if(NOT GUI_ARGS_TARGETS)
         message(AUTHOR_WARNING "setup_gui_app: You need to specify at least one target for this function!")
@@ -1065,6 +1078,11 @@ function(setup_package_export)
         LIBRARY DESTINATION "${__lib_dir}"
         ARCHIVE DESTINATION "${__lib_dir}"
     )
+    if(MSVC)
+        foreach(__target ${PKG_ARGS_TARGETS})
+            install(FILES "$<TARGET_PDB_FILE:${__target}>" DESTINATION "${__bin_dir}" OPTIONAL)
+        endforeach()
+    endif()
     export(EXPORT ${__export_name}
         FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/${__export_file}"
         NAMESPACE ${PKG_ARGS_NAMESPACE}::
@@ -1103,6 +1121,11 @@ function(install2)
         LIBRARY DESTINATION "${__lib_dir}"
         ARCHIVE DESTINATION "${__lib_dir}"
     )
+    if(MSVC)
+        foreach(__target ${arg_TARGETS})
+            install(FILES "$<TARGET_PDB_FILE:${__target}>" DESTINATION "${__bin_dir}" OPTIONAL)
+        endforeach()
+    endif()
 endfunction()
 
 function(deploy_qt_runtime)
