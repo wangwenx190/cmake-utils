@@ -1636,15 +1636,15 @@ function(generate_win32_manifest_file)
   <application xmlns=\"urn:schemas-microsoft-com:asm.v3\">
     <windowsSettings>
       <dpiAware xmlns=\"http://schemas.microsoft.com/SMI/2005/WindowsSettings\">True/PM</dpiAware>
-      <dpiAwareness xmlns=\"http://schemas.microsoft.com/SMI/2016/WindowsSettings\">PerMonitorV2, PerMonitor</dpiAwareness>
       <printerDriverIsolation xmlns=\"http://schemas.microsoft.com/SMI/2011/WindowsSettings\">true</printerDriverIsolation>
-      <longPathAware xmlns=\"http://schemas.microsoft.com/SMI/2016/WindowsSettings\">true</longPathAware>
-      <heapType xmlns=\"http://schemas.microsoft.com/SMI/2020/WindowsSettings\">SegmentHeap</heapType>
-      ${__utf8_codepage}
       <disableWindowFiltering xmlns=\"http://schemas.microsoft.com/SMI/2011/WindowsSettings\">true</disableWindowFiltering>
-      <!-- <highResolutionScrollingAware>true</highResolutionScrollingAware> -->
-      <!-- <ultraHighResolutionScrollingAware>true</ultraHighResolutionScrollingAware> -->
+      <highResolutionScrollingAware xmlns=\"http://schemas.microsoft.com/SMI/2013/WindowsSettings\">true</highResolutionScrollingAware>
+      <ultraHighResolutionScrollingAware xmlns=\"http://schemas.microsoft.com/SMI/2013/WindowsSettings\">true</ultraHighResolutionScrollingAware>
+      <dpiAwareness xmlns=\"http://schemas.microsoft.com/SMI/2016/WindowsSettings\">PerMonitorV2, PerMonitor</dpiAwareness>
+      <longPathAware xmlns=\"http://schemas.microsoft.com/SMI/2016/WindowsSettings\">true</longPathAware>
       <!-- <gdiScaling xmlns=\"http://schemas.microsoft.com/SMI/2017/WindowsSettings\">true</gdiScaling> -->
+      ${__utf8_codepage}
+      <heapType xmlns=\"http://schemas.microsoft.com/SMI/2020/WindowsSettings\">SegmentHeap</heapType>
     </windowsSettings>
   </application>
 </assembly>
