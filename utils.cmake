@@ -527,6 +527,10 @@ function(setup_project)
     set(__meta_target ${PROJECT_NAME}_METADATA)
     if(NOT TARGET ${__meta_target})
         add_custom_target(${__meta_target})
+        define_property(TARGET PROPERTY __PROJECT_LICENSE_HEADER) # INHERITED
+        define_property(TARGET PROPERTY __PROJECT_MODIFY_LOST_WARNING) # INHERITED
+        define_property(TARGET PROPERTY __PROJECT_CONFIG_PREFIX) # INHERITED
+        define_property(TARGET PROPERTY __PROJECT_VERSION_PREFIX) # INHERITED
     endif()
     if(arg_LICENSE_HEADER)
         set_target_properties(${__meta_target} PROPERTIES __PROJECT_LICENSE_HEADER "${arg_LICENSE_HEADER}")
@@ -2027,6 +2031,7 @@ function(generate_project_config)
         message(AUTHOR_WARNING "generate_project_config: The modification lost warning is not set.")
     endif()
     set(__inc_guard "_${PROJECT_NAME}_CONFIG_INCLUDE_GUARD_")
+    string(TOUPPER "${__inc_guard}" __inc_guard)
     set(__options "")
     foreach(__raw_option ${__raw_options})
         set(__length -1)
@@ -2084,54 +2089,74 @@ function(query_git_information)
     endif()
     #message(STATUS "Git found: ${GIT_EXECUTABLE} (version ${GIT_VERSION_STRING})")
     if(arg_HASH)
+        set(__hash "")
         execute_process(
             COMMAND "${GIT_EXECUTABLE}" log -1 --pretty=format:%H
-            OUTPUT_VARIABLE ${arg_HASH}
+            OUTPUT_VARIABLE __hash
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
             RESULT_VARIABLE __result_code
         )
+        if(__result_code EQUAL 0)
+            set(${arg_HASH} "${__hash}" PARENT_SCOPE)
+        endif()
     endif()
     if(arg_SUBJECT)
+        set(__subject "")
         execute_process(
             COMMAND "${GIT_EXECUTABLE}" log -1 --pretty=format:%s
-            OUTPUT_VARIABLE ${arg_SUBJECT}
+            OUTPUT_VARIABLE __subject
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
             RESULT_VARIABLE __result_code
         )
+        if(__result_code EQUAL 0)
+            set(${arg_SUBJECT} "${__subject}" PARENT_SCOPE)
+        endif()
     endif()
     if(arg_AUTHOR)
+        set(__author "")
         execute_process(
             COMMAND "${GIT_EXECUTABLE}" log -1 --pretty=format:"%aN (%aE)"
-            OUTPUT_VARIABLE ${arg_AUTHOR}
+            OUTPUT_VARIABLE __author
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
             RESULT_VARIABLE __result_code
         )
+        if(__result_code EQUAL 0)
+            set(${arg_AUTHOR} "${__author}" PARENT_SCOPE)
+        endif()
     endif()
     if(arg_DATETIME)
+        set(__datetime "")
         execute_process(
             COMMAND "${GIT_EXECUTABLE}" log -1 --pretty=format:%aI
-            OUTPUT_VARIABLE ${arg_DATETIME}
+            OUTPUT_VARIABLE __datetime
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
             RESULT_VARIABLE __result_code
         )
+        if(__result_code EQUAL 0)
+            set(${arg_DATETIME} "${__datetime}" PARENT_SCOPE)
+        endif()
     endif()
     if(arg_BRANCH)
+        set(__branch "")
         execute_process(
             COMMAND "${GIT_EXECUTABLE}" symbolic-ref --quiet --short HEAD
-            OUTPUT_VARIABLE ${arg_BRANCH}
+            OUTPUT_VARIABLE __branch
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
             RESULT_VARIABLE __result_code
         )
+        if(__result_code EQUAL 0)
+            set(${arg_BRANCH} "${__branch}" PARENT_SCOPE)
+        endif()
     endif()
 endfunction()
 
@@ -2402,6 +2427,7 @@ function(generate_project_version)
     set(__full_ver_hex "0x00000000")
     math(EXPR __full_ver_hex "((${__major} & 0xff) << 24) | ((${__minor} & 0xff) << 16) | ((${__patch} & 0xff) << 8) | (${__tweak} & 0xff)" OUTPUT_FORMAT HEXADECIMAL)
     set(__inc_guard "_${PROJECT_NAME}_VERSION_INCLUDE_GUARD_")
+    string(TOUPPER "${__inc_guard}" __inc_guard)
     set(__versions "")
     set(__common_num "[[maybe_unused]] inline constexpr const unsigned long")
     set(__common_str "[[maybe_unused]] inline constexpr const char")
@@ -2477,7 +2503,7 @@ function(generate_project_version)
         string(APPEND __versions "${__common_str} ${__prefix}_CMAKE_VERSION_STR[] = \"${CMAKE_VERSION}\";\n")
     endif()
     if(arg_GENERATOR)
-        string(APPEND __versions "${__common_str} ${__prefix}_CMAKE_VERSION_STR[] = \"${CMAKE_GENERATOR}\";\n")
+        string(APPEND __versions "${__common_str} ${__prefix}_CMAKE_GENERATOR_STR[] = \"${CMAKE_GENERATOR}\";\n")
     endif()
     set(__version_content "${__license_header}
 
