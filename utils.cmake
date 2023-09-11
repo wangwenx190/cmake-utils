@@ -2119,7 +2119,7 @@ function(query_git_information)
     if(arg_AUTHOR)
         set(__author "")
         execute_process(
-            COMMAND "${GIT_EXECUTABLE}" log -1 --pretty=format:"%aN (%aE)"
+            COMMAND "${GIT_EXECUTABLE}" log -1 "--pretty=format:%aN (%aE)"
             OUTPUT_VARIABLE __author
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
