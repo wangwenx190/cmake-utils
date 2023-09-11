@@ -21,6 +21,17 @@
 :: SOFTWARE.
 
 @echo off
-set HTTP_PROXY=http://127.0.0.1:4780
-set HTTPS_PROXY=http://127.0.0.1:4780
-set ALL_PROXY=http://127.0.0.1:4780
+for /f "tokens=1,2,*" %%i in ('reg query "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyEnable') do set __proxy_enable=%%k
+for /f "tokens=1,2,*" %%i in ('reg query "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyServer') do set __proxy_server=%%k
+if /i "%__proxy_enable%" == "0x1" (
+    set HTTP_PROXY=http://%__proxy_server%
+    set HTTPS_PROXY=http://%__proxy_server%
+    set ALL_PROXY=http://%__proxy_server%
+) else (
+    set HTTP_PROXY=
+    set HTTPS_PROXY=
+    set ALL_PROXY=
+)
+echo HTTP_PROXY=%HTTP_PROXY%
+echo HTTPS_PROXY=%HTTPS_PROXY%
+echo ALL_PROXY=%ALL_PROXY%

@@ -20,6 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-$env:HTTP_PROXY="http://127.0.0.1:4780"
-$env:HTTPS_PROXY="http://127.0.0.1:4780"
-$env:ALL_PROXY="http://127.0.0.1:4780"
+$__proxy_enable = Get-ItemPropertyValue "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" "ProxyEnable"
+$__proxy_server = Get-ItemPropertyValue "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" "ProxyServer"
+if ($__proxy_enable -eq 1) {
+    $env:HTTP_PROXY="http://$__proxy_server"
+    $env:HTTPS_PROXY="http://$__proxy_server"
+    $env:ALL_PROXY="http://$__proxy_server"
+} else {
+    $env:HTTP_PROXY=""
+    $env:HTTPS_PROXY=""
+    $env:ALL_PROXY=""
+}
+Write-Host "HTTP_PROXY:" $env:HTTP_PROXY
+Write-Host "HTTPS_PROXY:" $env:HTTPS_PROXY
+Write-Host "ALL_PROXY:" $env:ALL_PROXY
