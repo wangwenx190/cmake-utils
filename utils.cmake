@@ -585,7 +585,7 @@ function(get_commit_hash)
 endfunction()
 
 function(setup_qt_stuff)
-    cmake_parse_arguments(QT_ARGS "ALLOW_KEYWORD" "" "TARGETS" ${ARGN})
+    cmake_parse_arguments(QT_ARGS "ALLOW_KEYWORD;NO_DEPRECATED_API" "" "TARGETS" ${ARGN})
     if(NOT QT_ARGS_TARGETS)
         message(AUTHOR_WARNING "setup_qt_stuff: You need to specify at least one target for this function!")
         return()
@@ -614,12 +614,16 @@ function(setup_qt_stuff)
             #QT_TYPESAFE_FLAGS # QtQuick private headers prevent us from enabling this flag.
             QT_USE_QSTRINGBUILDER
             QT_USE_FAST_OPERATOR_PLUS
-            QT_DEPRECATED_WARNINGS # Have no effect since 6.0
+            QT_DEPRECATED_WARNINGS # Have no effect since 5.13
             QT_DEPRECATED_WARNINGS_SINCE=0x070000 # Deprecated since 6.5
             QT_WARN_DEPRECATED_UP_TO=0x070000 # Available since 6.5
-            QT_DISABLE_DEPRECATED_BEFORE=0x070000 # Deprecated since 6.5
-            QT_DISABLE_DEPRECATED_UP_TO=0x070000 # Available since 6.5
         )
+        if(QT_ARGS_NO_DEPRECATED_API)
+            target_compile_definitions(${__target} PRIVATE
+                QT_DISABLE_DEPRECATED_BEFORE=0x070000 # Deprecated since 6.5
+                QT_DISABLE_DEPRECATED_UP_TO=0x070000 # Available since 6.5
+            )
+        endif()
         # On Windows enabling this flag requires us re-compile Qt with this flag enabled,
         # so only enable it on non-Windows platforms.
         if(NOT WIN32)
