@@ -540,10 +540,6 @@ function(setup_project)
     if(PROJ_ARGS_VERSION_PREFIX)
         set(__version_prefix "${PROJ_ARGS_VERSION_PREFIX}")
     endif()
-    define_property(TARGET PROPERTY __PROJECT_LICENSE_HEADER) # INHERITED ?
-    define_property(TARGET PROPERTY __PROJECT_MODIFY_LOST_WARNING) # INHERITED ?
-    define_property(TARGET PROPERTY __PROJECT_CONFIG_PREFIX) # INHERITED ?
-    define_property(TARGET PROPERTY __PROJECT_VERSION_PREFIX) # INHERITED ?
     set(__meta_target ${PROJECT_NAME}_METADATA)
     add_custom_target(${__meta_target})
     set_target_properties(${__meta_target} PROPERTIES __PROJECT_MODIFY_LOST_WARNING "${__modify_lost_warning}")
