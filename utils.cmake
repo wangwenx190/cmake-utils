@@ -22,6 +22,9 @@
   SOFTWARE.
 ]]
 
+if(NOT DEFINED __WWX190_CMAKE_UTILS_INCLUDED)
+set(__WWX190_CMAKE_UTILS_INCLUDED 1)
+
 function(are_paths_equal lhs rhs out_var)
     if(NOT lhs OR NOT rhs)
         message(AUTHOR_WARNING "are_paths_equal: You have to pass two paths to this function!")
@@ -2546,3 +2549,5 @@ ${__versions}
 ")
     file(GENERATE OUTPUT "${arg_PATH}" CONTENT "${__version_content}")
 endfunction()
+
+endif() # __WWX190_CMAKE_UTILS_INCLUDED
