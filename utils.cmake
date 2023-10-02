@@ -890,7 +890,7 @@ function(setup_compile_params)
             endif()
             if(__lto_enabled)
                 target_compile_options(${__target} PRIVATE
-                    $<$<CONFIG:Release>:-fsplit-lto-unit -fwhole-program-vtables>
+                    $<$<CONFIG:Release>:-funified-lto -fwhole-program-vtables> # -fsplit-lto-unit
                 )
                 if(MSVC)
                     target_link_options(${__target} PRIVATE
