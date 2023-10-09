@@ -645,7 +645,7 @@ function(setup_compile_params)
         message(WARNING "setup_compile_params: Current toolchain is not supported. Only LLVM-MinGW (https://github.com/mstorsjo/llvm-mingw) has partial support.")
         return()
     endif()
-    cmake_parse_arguments(COM_ARGS "SPECTRE;EHCONTGUARD;PERMISSIVE;INTELCET;INTELJCC;CFGUARD;FORCE_LTO" "" "TARGETS" ${ARGN})
+    cmake_parse_arguments(COM_ARGS "SPECTRE;EHCONTGUARD;PERMISSIVE;INTELCET;INTELJCC;CFGUARD;FORCE_LTO;SECURE_CODE" "" "TARGETS" ${ARGN})
     if(NOT COM_ARGS_TARGETS)
         message(AUTHOR_WARNING "setup_compile_params: You need to specify at least one target for this function!")
         return()
@@ -698,8 +698,23 @@ function(setup_compile_params)
             )
             if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
                 target_compile_options(${__target} PRIVATE
-                    /bigobj /utf-8 $<$<CONFIG:Release>:/fp:fast /GT /Gw /Gy /Zc:inline>
+                    /bigobj /FS /MP /utf-8 $<$<CONFIG:Release>:/fp:fast /GT /Gw /Gy /Oi /Ot /Oy /Zc:inline>
                 )
+                if(COM_ARGS_SECURE_CODE)
+                    target_compile_options(${__target} PRIVATE
+                        /GS /sdl
+                    )
+                    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+                        target_link_options(${__target} PRIVATE /SAFESEH)
+                    endif()
+                else()
+                    target_compile_options(${__target} PRIVATE
+                        /GS- /sdl-
+                    )
+                    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+                        target_link_options(${__target} PRIVATE /SAFESEH:NO)
+                    endif()
+                endif()
                 target_link_options(${__target} PRIVATE
                     # We want to get the PDB files so we add the "/DEBUG" parameter here,
                     # however, MSVC will disable some optimizations if it found this flag,
@@ -712,9 +727,6 @@ function(setup_compile_params)
                     target_compile_options(${__target} PRIVATE $<$<CONFIG:Release>:/GA>)
                     target_link_options(${__target} PRIVATE /TSAWARE)
                 endif()
-                #if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-                #    target_link_options(${__target} PRIVATE /SAFESEH)
-                #endif()
                 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
                     target_link_options(${__target} PRIVATE /HIGHENTROPYVA)
                 endif()
@@ -831,7 +843,7 @@ function(setup_compile_params)
             if(APPLE)
                 target_link_options(${__target} PRIVATE
                     -Wl,-fatal_warnings -Wl,-undefined,error
-                    $<$<CONFIG:Release>:-Wl,-dead_strip -Wl,-no_data_in_code_info -Wl,-no_function_starts>
+                    $<$<CONFIG:Release>:-Wl,-dead_strip> # -Wl,-no_data_in_code_info -Wl,-no_function_starts
                 )
             else()
                 target_link_options(${__target} PRIVATE
@@ -889,16 +901,26 @@ function(setup_compile_params)
                 get_target_property(__lto_enabled ${__target} INTERPROCEDURAL_OPTIMIZATION)
             endif()
             if(__lto_enabled)
-                target_compile_options(${__target} PRIVATE
-                    $<$<CONFIG:Release>:-fwhole-program-vtables> # -fsplit-lto-unit -funified-lto
-                )
+                #target_compile_options(${__target} PRIVATE
+                #    $<$<CONFIG:Release>:-fsplit-lto-unit -funified-lto>
+                #)
+                if(__target_type STREQUAL "EXECUTABLE")
+                    target_compile_options(${__target} PRIVATE
+                        $<$<CONFIG:Release>:-fwhole-program-vtables>
+                    )
+                endif()
                 if(MSVC)
                     target_link_options(${__target} PRIVATE
-                        $<$<CONFIG:Release>:/OPT:lldltojobs=all /OPT:lldlto=3 /OPT:lldltocgo=3> # /lldltocachepolicy:cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
+                        $<$<CONFIG:Release>:/OPT:lldltojobs=all /OPT:lldlto=3 /OPT:lldltocgo=3>
                     )
                 else()
+                    if(__target_type STREQUAL "EXECUTABLE")
+                        target_link_options(${__target} PRIVATE
+                            $<$<CONFIG:Release>:-fwhole-program-vtables>
+                        )
+                    endif()
                     target_link_options(${__target} PRIVATE
-                        $<$<CONFIG:Release>:-fwhole-program-vtables -Wl,--thinlto-jobs=all -Wl,--lto-O3 -Wl,--lto-CGO3> # -Wl,--thinlto-cache-policy=cache_size=10%:cache_size_bytes=40g:cache_size_files=100000
+                        $<$<CONFIG:Release>:-Wl,--thinlto-jobs=all -Wl,--lto-O3 -Wl,--lto-CGO3>
                     )
                 endif()
             endif()
@@ -932,9 +954,18 @@ function(setup_compile_params)
                     -fansi-escape-codes
                     /Zc:dllexportInlines- # Do not export inline member functions. This is similar to "-fvisibility-inlines-hidden".
                     /Zc:char8_t /Zc:sizedDealloc /Zc:strictStrings /Zc:threadSafeInit /Zc:trigraphs /Zc:twoPhase
-                    /clang:-mcx16 # Needed by _InterlockedCompareExchange128() from CPP/WinRT.
-                    $<$<CONFIG:Release>:/clang:-mbranches-within-32B-boundaries /clang:-ffp-contract=fast /Gw /Gy /Zc:inline>
+                    $<$<CONFIG:Release>:/clang:-mbranches-within-32B-boundaries /fp:fast /Gw /Gy /Oi /Ot /Zc:inline>
                 )
+                if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                    target_compile_options(${__target} PRIVATE
+                        /clang:-mcx16 # Needed by _InterlockedCompareExchange128() from CPP/WinRT.
+                    )
+                endif()
+                if(COM_ARGS_SECURE_CODE)
+                    target_compile_options(${__target} PRIVATE /GS)
+                else()
+                    target_compile_options(${__target} PRIVATE /GS-)
+                endif()
                 target_link_options(${__target} PRIVATE
                     --color-diagnostics
                     $<$<CONFIG:Release>:/DEBUG /OPT:REF /OPT:ICF /OPT:LBR /OPT:lldtailmerge>
