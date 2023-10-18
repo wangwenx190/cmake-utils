@@ -838,7 +838,8 @@ function(setup_compile_params)
         else()
             target_compile_options(${__target} PRIVATE
                 -fthreadsafe-statics
-                $<$<CONFIG:Release>:-ffp-contract=fast -fomit-frame-pointer -ffunction-sections -fdata-sections -funroll-all-loops>
+                $<$<CONFIG:Release>:-fmerge-all-constants -ffp-contract=fast -fomit-frame-pointer
+                    -ffunction-sections -fdata-sections -funroll-all-loops>
             )
             if(APPLE)
                 target_link_options(${__target} PRIVATE
@@ -930,13 +931,7 @@ function(setup_compile_params)
             target_link_options(${__target} PRIVATE
                 $<$<CONFIG:Release>:-fsanitize=shadow-call-stack -fno-stack-protector>
             )]]
-            target_compile_options(${__target} PRIVATE
-                -fcolor-diagnostics
-                # Enable -fmerge-all-constants. This used to be the default in clang
-                # for over a decade. It makes clang non-conforming, but is fairly safe
-                # in practice and saves some binary size.
-                -fmerge-all-constants
-            )
+            target_compile_options(${__target} PRIVATE -fcolor-diagnostics)
             if(MSVC)
                 # Required to make the 19041 SDK compatible with clang-cl.
                 target_compile_definitions(${__target} PRIVATE __WRL_ENABLE_FUNCTION_STATICS__)
