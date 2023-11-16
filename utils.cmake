@@ -698,7 +698,13 @@ function(setup_compile_params)
             )
             if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
                 target_compile_options(${__target} PRIVATE
-                    /bigobj /FS /MP /utf-8 $<$<CONFIG:Release>:/fp:fast /GT /Gw /Gy /Oi /Ot /Oy /Zc:inline>
+                    # NOTE #1:
+                    # Don't add "/fp:fast" unless absolutely necessary, because it makes many floating point
+                    # based math calculations give very wrong result, eg: NaN.
+                    # NOTE #2:
+                    # "/fp:strict" means that all the rules of IEEE 754 are respected.
+                    # It's used to sustain bitwise compatibility between different compilers and platforms.
+                    /bigobj /fp:strict /FS /MP /utf-8 $<$<CONFIG:Release>:/GT /Gw /Gy /Oi /Ot /Oy /Zc:inline>
                 )
                 if(COM_ARGS_SECURE_CODE)
                     target_compile_options(${__target} PRIVATE
@@ -838,8 +844,15 @@ function(setup_compile_params)
         else()
             target_compile_options(${__target} PRIVATE
                 -fthreadsafe-statics
-                $<$<CONFIG:Release>:-fmerge-all-constants -ffp-contract=fast -fomit-frame-pointer
-                    -ffunction-sections -fdata-sections -funroll-all-loops>
+                # NOTE #1:
+                # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Optimize-Options.html#index-ffp-contract
+                # The official documentation tells us that "-ffp-contract=fast" is compiler default,
+                # does it mean GCC/Clang doesn't have the same math calculation issue with MSVC?
+                # NOTE #2:
+                # -fomit-frame-pointer: Enabled by default at -O1 and higher.
+                # NOTE #3:
+                # -funroll-all-loops: This usually makes programs run more slowly.
+                $<$<CONFIG:Release>:-fmerge-all-constants -ffunction-sections -fdata-sections -funroll-loops>
             )
             if(APPLE)
                 target_link_options(${__target} PRIVATE
@@ -936,7 +949,8 @@ function(setup_compile_params)
                 # Required to make the 19041 SDK compatible with clang-cl.
                 target_compile_definitions(${__target} PRIVATE __WRL_ENABLE_FUNCTION_STATICS__)
                 target_compile_options(${__target} PRIVATE
-                    /bigobj /utf-8 /FS
+                    # Why use "/fp:strict": same reason as MSVC above.
+                    /bigobj /utf-8 /fp:strict /FS
                     -fmsc-version=1935 # Tell clang-cl to emulate Visual Studio 2022 version 17.5
                     # This flag enforces that member pointer base types are complete.
                     # It helps prevent us from running into problems in the Microsoft C++ ABI.
@@ -949,7 +963,8 @@ function(setup_compile_params)
                     -fansi-escape-codes
                     /Zc:dllexportInlines- # Do not export inline member functions. This is similar to "-fvisibility-inlines-hidden".
                     /Zc:char8_t /Zc:sizedDealloc /Zc:strictStrings /Zc:threadSafeInit /Zc:trigraphs /Zc:twoPhase
-                    $<$<CONFIG:Release>:/clang:-mbranches-within-32B-boundaries /fp:fast /Gw /Gy /Oi /Ot /Zc:inline>
+                    # No "/fp:fast", same reason as MSVC above.
+                    $<$<CONFIG:Release>:/clang:-mbranches-within-32B-boundaries /Gw /Gy /Oi /Ot /Zc:inline>
                 )
                 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
                     target_compile_options(${__target} PRIVATE
