@@ -698,13 +698,10 @@ function(setup_compile_params)
             )
             if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
                 target_compile_options(${__target} PRIVATE
-                    # NOTE #1:
+                    # NOTE:
                     # Don't add "/fp:fast" unless absolutely necessary, because it makes many floating point
                     # based math calculations give very wrong result, eg: NaN.
-                    # NOTE #2:
-                    # "/fp:strict" means that all the rules of IEEE 754 are respected.
-                    # It's used to sustain bitwise compatibility between different compilers and platforms.
-                    /bigobj /fp:strict /FS /MP /utf-8 $<$<CONFIG:Release>:/GT /Gw /Gy /Oi /Ot /Oy /Zc:inline>
+                    /bigobj /FS /MP /utf-8 $<$<CONFIG:Release>:/GT /Gw /Gy /Oi /Ot /Oy /Zc:inline>
                 )
                 if(COM_ARGS_SECURE_CODE)
                     target_compile_options(${__target} PRIVATE
@@ -949,8 +946,7 @@ function(setup_compile_params)
                 # Required to make the 19041 SDK compatible with clang-cl.
                 target_compile_definitions(${__target} PRIVATE __WRL_ENABLE_FUNCTION_STATICS__)
                 target_compile_options(${__target} PRIVATE
-                    # Why use "/fp:strict": same reason as MSVC above.
-                    /bigobj /utf-8 /fp:strict /FS
+                    /bigobj /utf-8 /FS
                     -fmsc-version=1935 # Tell clang-cl to emulate Visual Studio 2022 version 17.5
                     # This flag enforces that member pointer base types are complete.
                     # It helps prevent us from running into problems in the Microsoft C++ ABI.
