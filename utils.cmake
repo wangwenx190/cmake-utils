@@ -957,7 +957,9 @@ function(setup_compile_params)
                     # Enable ANSI escape codes if something emulating them is around (cmd.exe
                     # doesn't understand ANSI escape codes by default).
                     -fansi-escape-codes
-                    /Zc:dllexportInlines- # Do not export inline member functions. This is similar to "-fvisibility-inlines-hidden".
+                    # This parameter makes the generated binary not compatible with MSVC and it
+                    # also breaks many projects, although it was introduced as an optimization.
+                    #/Zc:dllexportInlines- # Do not export inline member functions. This is similar to "-fvisibility-inlines-hidden".
                     /Zc:char8_t /Zc:sizedDealloc /Zc:strictStrings /Zc:threadSafeInit /Zc:trigraphs /Zc:twoPhase
                     # No "/fp:fast", same reason as MSVC above.
                     $<$<CONFIG:Release>:/clang:-mbranches-within-32B-boundaries /Gw /Gy /Oi /Ot /Zc:inline>
