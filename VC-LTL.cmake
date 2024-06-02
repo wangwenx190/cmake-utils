@@ -31,11 +31,6 @@ if(NOT DEFINED WindowsTargetPlatformMinVersion)
     set(WindowsTargetPlatformMinVersion "10.0.19041.0" CACHE STRING "" FORCE)
 endif()
 
-#启用干净的导入表，消除 ucrt apiset(如：api-ms-win-crt-time-l1-1-0.dll)，满足强迫症患者。
-if(NOT DEFINED CleanImport)
-    set(CleanImport "true" CACHE STRING "" FORCE)
-endif()
-
 ####################################################################################################################################################
 
 if(NOT VC_LTL_Root)
